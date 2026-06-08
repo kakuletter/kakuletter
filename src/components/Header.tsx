@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 
@@ -24,7 +23,8 @@ export default function Header({ isLoggedIn, isAdmin }: Props) {
     <header className="border-b border-stone-200 bg-white">
       <div className="max-w-5xl mx-auto px-4 h-14 flex items-center justify-between">
         <Link href="/" className="flex items-center gap-1.5 shrink-0">
-          <Image src="/logo.png" alt="KKL" width={36} height={36} className="object-contain w-8 h-8 sm:w-9 sm:h-9" />
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/logo.svg" alt="KKL" className="object-contain w-10 h-10 sm:w-12 sm:h-12" />
           <span className="font-bold text-sm sm:text-xl tracking-widest text-rose-700">KAKULETTER</span>
         </Link>
         <nav className="flex items-center gap-2 sm:gap-4 text-xs sm:text-sm">
