@@ -6,8 +6,8 @@ export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const letterId = searchParams.get("letterId");
 
-  if (!letterId) {
-    return NextResponse.json({ error: "letterId is required" }, { status: 400 });
+  if (!letterId || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(letterId)) {
+    return NextResponse.json({ error: "Invalid letterId" }, { status: 400 });
   }
 
   // UUID（128ビット乱数）が鍵として機能するため認証不要

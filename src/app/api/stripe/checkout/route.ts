@@ -58,6 +58,6 @@ export async function POST() {
     const message = err instanceof Error ? err.message : String(err);
     const code = (err as NodeJS.ErrnoException).code ?? "unknown";
     console.error("[Stripe] checkout error:", message, "code:", code, JSON.stringify(err));
-    return NextResponse.json({ error: `Stripe エラー: ${message} (code: ${code})` }, { status: 500 });
+    return NextResponse.json({ error: "決済の準備に失敗しました。時間をおいて再度お試しください。" }, { status: 500 });
   }
 }

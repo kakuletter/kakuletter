@@ -30,10 +30,9 @@ export async function createQRPayment(
 
   try {
     const response = await PAYPAY.QRCodeCreate(payload);
-    console.log("[PayPay] QRCodeCreate:", JSON.stringify(response?.BODY ?? response));
     return (response?.BODY?.data?.url as string) ?? null;
   } catch (e) {
-    console.error("[PayPay] QRCodeCreate error:", e);
+    console.error("[PayPay] QRCodeCreate error:", e instanceof Error ? e.message : String(e));
     return null;
   }
 }
@@ -41,10 +40,9 @@ export async function createQRPayment(
 export async function getPaymentStatus(letterId: string): Promise<string | null> {
   try {
     const response = await PAYPAY.GetCodePaymentDetails([letterId]);
-    console.log("[PayPay] GetCodePaymentDetails response:", JSON.stringify(response?.BODY ?? response));
     return (response?.BODY?.data?.status as string) ?? null;
   } catch (e) {
-    console.error("[PayPay] GetCodePaymentDetails error:", e);
+    console.error("[PayPay] GetCodePaymentDetails error:", e instanceof Error ? e.message : String(e));
     return null;
   }
 }
