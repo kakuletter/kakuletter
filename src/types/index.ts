@@ -36,6 +36,9 @@ export type Letter = {
   fee_amount: number;
   payout_amount: number | null;
   payout_status: "none" | "pending" | "paid";
+  // 決済
+  payment_method: "paypay" | "stripe";
+  stripe_session_id: string | null;
 };
 
 export type ActionState = {

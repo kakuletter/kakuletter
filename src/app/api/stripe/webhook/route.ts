@@ -25,6 +25,21 @@ export async function POST(request: Request) {
   switch (event.type) {
     case "checkout.session.completed": {
       const session = event.data.object as Stripe.Checkout.Session;
+
+      // 手紙決済
+      if (session.metadata?.type === "letter" && session.mode === "payment") {
+        const letterId = session.metadata.letter_id;
+        if (letterId) {
+          await adminClient
+            .from("letters")
+            .update({ status: "received", received_at: new Date().toISOString() })
+            .eq("id", letterId)
+            .eq("status", "payment_pending");
+        }
+        break;
+      }
+
+      // サブスク決済
       const authId = session.metadata?.auth_id;
       if (!authId || session.mode !== "subscription") break;
 
@@ -40,7 +55,6 @@ export async function POST(request: Request) {
     }
 
     case "invoice.paid": {
-      // 更新: サブスクが有効であることを確認
       const invoice = event.data.object as Stripe.Invoice & { subscription?: string };
       if (!invoice.subscription) break;
 

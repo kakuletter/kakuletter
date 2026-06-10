@@ -11,16 +11,16 @@ export async function GET(request: Request) {
   }
 
   const adminClient = createAdminClient();
-  const recipient = await lookupRecipient(adminClient, rawId);
+  const result = await lookupRecipient(adminClient, rawId);
 
-  if (!recipient) {
+  if (!result) {
     return NextResponse.json({ exists: false });
   }
 
+  const { recipient, isCustomId } = result;
   const isPremium = recipient.subscription_status === "premium";
-  const fee = isPremium && recipient.custom_fee ? recipient.custom_fee : DEFAULT_LETTER_FEE;
 
-  // 無料会員の月間受取上限チェック
+  // 無料会員の月間受取上限チェック（カスタムID = premium なので実質スキップ）
   let monthlyLimitReached = false;
   if (!isPremium) {
     const now = new Date();
@@ -37,27 +37,34 @@ export async function GET(request: Request) {
     }
   }
 
-  return NextResponse.json({ exists: true, fee, monthlyLimitReached, isPremium });
+  return NextResponse.json({
+    exists: true,
+    fee: DEFAULT_LETTER_FEE,
+    monthlyLimitReached,
+    isPremium,
+    isCustomId,
+  });
 }
 
 async function lookupRecipient(
   adminClient: ReturnType<typeof createAdminClient>,
   rawId: string
-) {
+): Promise<{ recipient: { id: string; display_id: string; subscription_status: string }; isCustomId: boolean } | null> {
   const { data: byDisplayId } = await adminClient
     .from("users")
-    .select("id, display_id, subscription_status, custom_fee")
+    .select("id, display_id, subscription_status")
     .eq("display_id", rawId.toUpperCase())
-    .single<{ id: string; display_id: string; subscription_status: string; custom_fee: number | null }>();
+    .single<{ id: string; display_id: string; subscription_status: string }>();
 
-  if (byDisplayId) return byDisplayId;
+  if (byDisplayId) return { recipient: byDisplayId, isCustomId: false };
 
   const normalizedCustomId = `KKL-${rawId.replace(/^KKL-/i, "").toLowerCase()}`;
   const { data: byCustomId } = await adminClient
     .from("users")
-    .select("id, display_id, subscription_status, custom_fee")
+    .select("id, display_id, subscription_status")
     .eq("custom_id", normalizedCustomId)
-    .single<{ id: string; display_id: string; subscription_status: string; custom_fee: number | null }>();
+    .single<{ id: string; display_id: string; subscription_status: string }>();
 
-  return byCustomId ?? null;
+  if (byCustomId) return { recipient: byCustomId, isCustomId: true };
+  return null;
 }

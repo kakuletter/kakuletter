@@ -15,10 +15,13 @@ export const metadata = {
 
 export default async function LetterPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ stripe_return?: string }>;
 }) {
   const { id } = await params;
+  const { stripe_return } = await searchParams;
 
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
@@ -33,19 +36,16 @@ export default async function LetterPage({
 
   if (!letter) notFound();
 
-  // このページのURLに含まれる UUID（128ビット乱数）が鍵。
-  // ログイン中ユーザーが別人の手紙URLを踏んだ場合のみ弾く。
-  // 匿名送信（sender_email=null）の場合はURLを知っている人なら誰でもアクセス可。
   if (letter.sender_email && user && letter.sender_email !== user.email) {
     notFound();
   }
 
-  // バーコード用QRコードを生成（letter.id をエンコード）
   const qrDataUrl = letter.status !== "payment_pending"
     ? await QRCode.toDataURL(letter.id, { width: 200, margin: 2 })
     : null;
 
   const serviceAddress = process.env.NEXT_PUBLIC_SERVICE_ADDRESS ?? "（運営住所）";
+  const isStripeReturn = stripe_return === "1";
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -71,26 +71,51 @@ export default async function LetterPage({
         {letter.status === "payment_pending" && (
           <div className="bg-white rounded-2xl border border-stone-200 p-6 space-y-4 text-center">
             <p className="text-stone-700 font-medium">支払いが完了していません</p>
-            <p className="text-stone-500 text-sm">
-              PayPayでの支払いが確認できません。<br />
-              支払い済みの場合は下のボタンを押してください。
-            </p>
-            {letter.payment_url && (
-              <a
-                href={letter.payment_url}
-                className="inline-block bg-rose-700 text-white px-6 py-2.5 rounded-full text-sm font-medium hover:bg-rose-800"
-              >
-                PayPayで支払う
-              </a>
+
+            {letter.payment_method === "stripe" ? (
+              <>
+                <p className="text-stone-500 text-sm">
+                  {isStripeReturn
+                    ? "支払いを確認しています..."
+                    : "Stripeでの支払いが確認できません。"}
+                </p>
+                {letter.payment_url && !isStripeReturn && (
+                  <a
+                    href={letter.payment_url}
+                    className="inline-block bg-[#635BFF] text-white px-6 py-2.5 rounded-full text-sm font-medium hover:bg-[#4E47D0]"
+                  >
+                    Stripeで支払う
+                  </a>
+                )}
+              </>
+            ) : (
+              <>
+                <p className="text-stone-500 text-sm">
+                  PayPayでの支払いが確認できません。<br />
+                  支払い済みの場合は下のボタンを押してください。
+                </p>
+                {letter.payment_url && (
+                  <a
+                    href={letter.payment_url}
+                    className="inline-block bg-rose-700 text-white px-6 py-2.5 rounded-full text-sm font-medium hover:bg-rose-800"
+                  >
+                    PayPayで支払う
+                  </a>
+                )}
+              </>
             )}
-            <PaymentChecker letterId={letter.id} />
+
+            <PaymentChecker
+              letterId={letter.id}
+              paymentMethod={letter.payment_method}
+              stripeReturn={isStripeReturn}
+            />
           </div>
         )}
 
         {/* バーコード（支払い完了後） */}
         {qrDataUrl && (
           <>
-            {/* URL保存の警告（ログアウト状態） */}
             {!user && (
               <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 space-y-2">
                 <p className="text-sm font-semibold text-amber-800">

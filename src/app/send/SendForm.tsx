@@ -1,17 +1,22 @@
 "use client";
 
-import { useActionState, useEffect, useState, useCallback } from "react";
+import { useActionState, useEffect, useState, useCallback, useRef } from "react";
 import { createLetterPayment } from "./actions";
 import type { ActionState } from "@/types";
 
 const initialState: ActionState = {};
 const ID_REGEX = /^KKL-([A-Z0-9]{5}|[A-Za-z][A-Za-z0-9-]{2,19})$/i;
 
+const MIN_CUSTOM_AMOUNT = 500;
+const MAX_CUSTOM_AMOUNT = 50000;
+const QUICK_AMOUNTS = [500, 1000, 3000, 5000, 10000, 30000];
+
 type RecipientInfo = {
   exists: boolean;
   fee: number;
   monthlyLimitReached: boolean;
   isPremium: boolean;
+  isCustomId: boolean;
 } | null;
 
 export default function SendForm() {
@@ -19,15 +24,18 @@ export default function SendForm() {
   const [recipientId, setRecipientId] = useState("");
   const [recipientInfo, setRecipientInfo] = useState<RecipientInfo>(null);
   const [fetching, setFetching] = useState(false);
+  const [customAmount, setCustomAmount] = useState(1000);
+  const formRef = useRef<HTMLFormElement>(null);
+  const methodRef = useRef<HTMLInputElement>(null);
 
-  // 決済URLが返ってきたら localStorage に保存してから PayPay に遷移
+  // 決済URLが返ってきたらリダイレクト
   useEffect(() => {
     if (state?.success && state.data?.paymentUrl && state.data?.letterId) {
       try {
         const saved: string[] = JSON.parse(localStorage.getItem("kakuletter_sent") ?? "[]");
         const updated = [state.data.letterId as string, ...saved.filter(id => id !== state.data!.letterId)];
         localStorage.setItem("kakuletter_sent", JSON.stringify(updated.slice(0, 20)));
-      } catch { /* localStorage 使用不可の環境では無視 */ }
+      } catch { /* ignore */ }
       window.location.href = state.data.paymentUrl as string;
     }
   }, [state]);
@@ -49,31 +57,38 @@ export default function SendForm() {
     }
   }, []);
 
-  // デバウンス: 500ms 後にフェッチ
   useEffect(() => {
     const timer = setTimeout(() => fetchRecipientInfo(recipientId), 500);
     return () => clearTimeout(timer);
   }, [recipientId, fetchRecipientInfo]);
 
-  const fee = recipientInfo?.exists ? recipientInfo.fee : 310;
-  const isPremiumRecipient = recipientInfo?.isPremium ?? false;
+  function submit(method: "paypay" | "stripe") {
+    if (methodRef.current) methodRef.current.value = method;
+    formRef.current?.requestSubmit();
+  }
+
+  const isCustomId = recipientInfo?.isCustomId ?? false;
   const isLimitReached = recipientInfo?.monthlyLimitReached ?? false;
   const recipientFound = recipientInfo?.exists;
+  const canSubmit = !isPending && !state?.success && !isLimitReached && recipientFound;
 
   return (
-    <form action={formAction} className="space-y-5">
+    <form ref={formRef} action={formAction} className="space-y-5">
+      <input type="hidden" name="paymentMethod" ref={methodRef} defaultValue="paypay" />
+      <input type="hidden" name="customAmount" value={isCustomId ? customAmount : ""} readOnly />
+
       {state?.error && (
         <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-xl px-4 py-3">
           {state.error}
         </div>
       )}
-
       {state?.success && (
         <div className="bg-stone-50 border border-stone-200 text-stone-600 text-sm rounded-xl px-4 py-3 text-center">
-          PayPayに遷移します...
+          決済ページに移動します...
         </div>
       )}
 
+      {/* 受取人ID */}
       <div>
         <label className="block text-sm font-medium text-stone-700 mb-1.5">
           受取人のKAKULETTER ID <span className="text-rose-600">*</span>
@@ -91,26 +106,71 @@ export default function SendForm() {
         <p className="text-xs text-stone-400 mt-1.5">
           文通相手から教えてもらったIDを入力してください。
         </p>
-
-        {/* リアルタイムフィードバック */}
         {recipientId && ID_REGEX.test(recipientId) && !fetching && (
           <p className={`text-xs mt-1.5 ${recipientFound ? "text-green-600" : "text-red-500"}`}>
-            {recipientFound ? "✓ 受取人が見つかりました" : "このIDは登録されていません"}
+            {recipientFound
+              ? isCustomId
+                ? "✓ カスタムIDが見つかりました"
+                : "✓ 受取人が見つかりました"
+              : "このIDは登録されていません"}
           </p>
         )}
-        {fetching && (
-          <p className="text-xs text-stone-400 mt-1.5">確認中...</p>
-        )}
+        {fetching && <p className="text-xs text-stone-400 mt-1.5">確認中...</p>}
       </div>
 
-      {/* 手数料表示 */}
-      <div className={`rounded-xl px-4 py-3 text-sm ${isPremiumRecipient ? "bg-amber-50 border border-amber-100 text-amber-800" : "bg-rose-50 border border-rose-100 text-rose-800"}`}>
-        {isPremiumRecipient ? (
-          <span>転送手数料：<strong>{fee.toLocaleString()}円</strong>（この受取人が設定した金額）</span>
-        ) : (
-          <span>転送手数料：<strong>310円</strong>（PayPayでお支払い）</span>
-        )}
-      </div>
+      {/* カスタムID宛：金額入力 */}
+      {recipientFound && isCustomId && (
+        <div className="space-y-3">
+          <div className="bg-amber-50 border border-amber-100 rounded-xl px-4 py-3 text-sm text-amber-800">
+            このIDはプレミアム会員のカスタムIDです。<strong>500円〜50,000円</strong>の範囲で転送手数料を設定してください。
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-stone-700 mb-2">
+              転送手数料：<span className="text-lg font-bold text-rose-700">{customAmount.toLocaleString()}円</span>
+            </label>
+            <input
+              type="range"
+              min={MIN_CUSTOM_AMOUNT}
+              max={MAX_CUSTOM_AMOUNT}
+              step={100}
+              value={customAmount}
+              onChange={(e) => setCustomAmount(Number(e.target.value))}
+              className="w-full accent-rose-600"
+            />
+            <div className="flex justify-between text-xs text-stone-400 mt-1">
+              <span>500円</span>
+              <span>50,000円</span>
+            </div>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {QUICK_AMOUNTS.map((amt) => (
+              <button
+                key={amt}
+                type="button"
+                onClick={() => setCustomAmount(amt)}
+                className={`px-3 py-1.5 rounded-full text-sm border transition-colors ${
+                  customAmount === amt
+                    ? "bg-rose-700 text-white border-rose-700"
+                    : "bg-white text-stone-700 border-stone-300 hover:border-rose-400"
+                }`}
+              >
+                {amt.toLocaleString()}円
+              </button>
+            ))}
+          </div>
+          <div className="bg-rose-50 border border-rose-100 rounded-xl px-4 py-3 text-xs text-stone-600 space-y-1">
+            <p>・運営受取：<strong>{(310 + Math.floor((customAmount - 310) * 0.2)).toLocaleString()}円</strong>（310円 + 超過分20%）</p>
+            <p>・受取人受取：<strong>{Math.floor((customAmount - 310) * 0.8).toLocaleString()}円</strong>（超過分80%）</p>
+          </div>
+        </div>
+      )}
+
+      {/* 通常ID宛：固定310円 */}
+      {recipientFound && !isCustomId && (
+        <div className="bg-rose-50 border border-rose-100 rounded-xl px-4 py-3 text-sm text-rose-800">
+          転送手数料：<strong>310円</strong>（固定）
+        </div>
+      )}
 
       {isLimitReached && (
         <div className="bg-stone-50 border border-stone-200 rounded-xl px-4 py-3 text-sm text-stone-500 text-center">
@@ -118,13 +178,49 @@ export default function SendForm() {
         </div>
       )}
 
-      <button
-        type="submit"
-        disabled={isPending || !!state?.success || isLimitReached}
-        className="w-full bg-rose-700 text-white py-3 rounded-xl font-medium hover:bg-rose-800 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
-      >
-        {isPending ? "処理中..." : `PayPayで${fee.toLocaleString()}円を支払いに進む`}
-      </button>
+      {/* 決済ボタン */}
+      {isCustomId ? (
+        // カスタムID宛：Stripeのみ
+        <button
+          type="button"
+          disabled={!canSubmit}
+          onClick={() => submit("stripe")}
+          className="w-full bg-rose-700 text-white py-3 rounded-xl font-medium hover:bg-rose-800 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+        >
+          {isPending ? "処理中..." : `Stripeで${customAmount.toLocaleString()}円を支払いに進む`}
+        </button>
+      ) : (
+        // 通常ID宛：PayPay または Stripe
+        <div className="grid grid-cols-2 gap-3">
+          <button
+            type="button"
+            disabled={!canSubmit}
+            onClick={() => submit("paypay")}
+            className="bg-[#00B900] text-white py-3 rounded-xl font-medium hover:bg-[#009900] transition-colors disabled:opacity-60 disabled:cursor-not-allowed text-sm"
+          >
+            {isPending ? "..." : "PayPayで支払う"}
+          </button>
+          <button
+            type="button"
+            disabled={!canSubmit}
+            onClick={() => submit("stripe")}
+            className="bg-[#635BFF] text-white py-3 rounded-xl font-medium hover:bg-[#4E47D0] transition-colors disabled:opacity-60 disabled:cursor-not-allowed text-sm"
+          >
+            {isPending ? "..." : "カードで支払う"}
+          </button>
+        </div>
+      )}
+
+      {!recipientFound && !fetching && recipientId && ID_REGEX.test(recipientId) && (
+        <p className="text-center text-xs text-stone-400">
+          有効なIDを入力すると決済ボタンが表示されます。
+        </p>
+      )}
+      {!recipientId && (
+        <p className="text-center text-xs text-stone-400">
+          受取人IDを入力すると決済ボタンが表示されます。
+        </p>
+      )}
     </form>
   );
 }
