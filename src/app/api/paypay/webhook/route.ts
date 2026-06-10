@@ -1,16 +1,11 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { verifyWebhookHeader } from "@/lib/paypay";
+import { getPaymentStatus } from "@/lib/paypay";
+
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export async function POST(request: Request) {
   const rawBody = await request.text();
-  const header = request.headers.get("x-paypay-signature") ?? "";
-
-  // 署名検証（本番では必須。サンドボックスでは省略可）
-  const isValid = await verifyWebhookHeader(rawBody, header);
-  if (!isValid && process.env.NODE_ENV === "production") {
-    return NextResponse.json({ error: "Invalid signature" }, { status: 401 });
-  }
 
   let payload: { merchantPaymentId?: string; state?: string };
   try {
@@ -19,9 +14,19 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
 
-  const { merchantPaymentId, state } = payload;
+  const { merchantPaymentId } = payload;
 
-  if (state === "COMPLETED" && merchantPaymentId) {
+  // merchantPaymentId は letter.id（UUID）。形式を検証。
+  if (!merchantPaymentId || !UUID_REGEX.test(merchantPaymentId)) {
+    return NextResponse.json({ ok: true });
+  }
+
+  // webhook本文の state は信用しない。
+  // 署名検証の代わりに、認証付き PayPay API で実際の支払い状態を再確認することで
+  // 偽装POSTによる不正なステータス更新を防ぐ。
+  const status = await getPaymentStatus(merchantPaymentId);
+
+  if (status === "COMPLETED") {
     const adminClient = createAdminClient();
     await adminClient
       .from("letters")
