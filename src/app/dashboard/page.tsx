@@ -86,7 +86,7 @@ export default async function DashboardPage({
         {/* 登録成功バナー */}
         {params.subscription === "success" && (
           <div className="bg-green-50 border border-green-200 rounded-xl p-4 text-sm text-green-800 text-center">
-            🎉 プレミアムプランへの登録が完了しました！カスタムIDと手数料を設定してください。
+            🎉 プレミアムプランへの登録が完了しました！カスタムIDを設定してください。
           </div>
         )}
 
@@ -145,7 +145,7 @@ export default async function DashboardPage({
         {isPremium && (
           <section className="bg-white rounded-2xl border border-stone-200 p-6 md:p-8">
             <h2 className="font-semibold text-stone-900 mb-5">プレミアム設定</h2>
-            <PremiumSettings customId={profile.custom_id} customFee={profile.custom_fee} />
+            <PremiumSettings customId={profile.custom_id} />
           </section>
         )}
 
@@ -155,7 +155,7 @@ export default async function DashboardPage({
           <ol className="space-y-2 text-sm text-stone-700">
             <li className="flex gap-2">
               <span className="text-rose-600 font-bold shrink-0">1.</span>
-              「手紙を送る」から受取人IDを入力し、PayPayで手数料を支払う。
+              「手紙を送る」から受取人IDを入力し、PayPayまたはカードで手数料を支払う。
             </li>
             <li className="flex gap-2">
               <span className="text-rose-600 font-bold shrink-0">2.</span>

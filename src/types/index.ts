@@ -17,7 +17,6 @@ export type UserProfile = {
   stripe_subscription_id: string | null;
   subscription_expires_at: string | null;
   custom_id: string | null;
-  custom_fee: number | null;
 };
 
 export type Letter = {

@@ -76,38 +76,3 @@ export async function updateCustomId(
 
   return { success: true, data: { message: `カスタムID「${rawCustomId}」を設定しました。` } };
 }
-
-export async function updateCustomFee(
-  _prevState: ActionState,
-  formData: FormData
-): Promise<ActionState> {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) redirect("/auth/login");
-
-  const adminClient = createAdminClient();
-  const { data: profile } = await adminClient
-    .from("users")
-    .select("subscription_status")
-    .eq("auth_id", user.id)
-    .single<{ subscription_status: string }>();
-
-  if (profile?.subscription_status !== "premium") {
-    return { error: "プレミアム会員のみ手数料を設定できます。" };
-  }
-
-  const rawFee = formData.get("custom_fee") as string;
-  if (!rawFee) {
-    // null にリセット（310円に戻す）
-    await adminClient.from("users").update({ custom_fee: null }).eq("auth_id", user.id);
-    return { success: true, data: { message: "手数料を310円（デフォルト）に戻しました。" } };
-  }
-
-  const fee = parseInt(rawFee, 10);
-  if (isNaN(fee) || fee < 500 || fee > 10000) {
-    return { error: "手数料は500円〜10,000円の範囲で設定してください。" };
-  }
-
-  await adminClient.from("users").update({ custom_fee: fee }).eq("auth_id", user.id);
-  return { success: true, data: { message: `手数料を${fee.toLocaleString()}円に設定しました。` } };
-}

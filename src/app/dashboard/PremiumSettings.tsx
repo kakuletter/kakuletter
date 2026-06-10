@@ -1,16 +1,14 @@
 "use client";
 
 import { useActionState } from "react";
-import { updateCustomId, updateCustomFee } from "./actions";
+import { updateCustomId } from "./actions";
 
 type Props = {
   customId: string | null;
-  customFee: number | null;
 };
 
-export default function PremiumSettings({ customId, customFee }: Props) {
+export default function PremiumSettings({ customId }: Props) {
   const [idState, idAction, idPending] = useActionState(updateCustomId, {});
-  const [feeState, feeAction, feePending] = useActionState(updateCustomFee, {});
 
   return (
     <div className="space-y-6">
@@ -48,39 +46,16 @@ export default function PremiumSettings({ customId, customFee }: Props) {
         )}
       </div>
 
-      {/* カスタム手数料 */}
-      <div>
-        <p className="text-sm font-medium text-stone-700 mb-1">送り手の手数料（円）</p>
-        <p className="text-xs text-stone-400 mb-3">
-          現在：<span className="font-medium text-stone-700">{customFee ? `${customFee.toLocaleString()}円` : "310円（デフォルト）"}</span>
+      {/* 手数料の仕組み（カスタムID宛） */}
+      <div className="bg-amber-50 border border-amber-100 rounded-xl px-4 py-3 space-y-1.5">
+        <p className="text-sm font-medium text-amber-900">カスタムID宛の手数料について</p>
+        <p className="text-xs text-amber-800">
+          カスタムID宛に手紙を送る人が、転送手数料を <strong>500〜50,000円</strong> の範囲で自由に設定します。
         </p>
-        <form action={feeAction} className="flex gap-2">
-          <input
-            type="number"
-            name="custom_fee"
-            defaultValue={customFee ?? ""}
-            placeholder="500"
-            min={500}
-            max={10000}
-            className="flex-1 border border-stone-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-rose-400"
-          />
-          <button
-            type="submit"
-            disabled={feePending}
-            className="bg-rose-700 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-rose-800 disabled:opacity-60"
-          >
-            保存
-          </button>
-        </form>
-        <p className="text-xs text-stone-400 mt-1.5">
-          500円〜10,000円の範囲で設定可。空欄で310円（デフォルト）に戻す。
+        <p className="text-xs text-amber-800">
+          手数料のうち <strong>（手数料 − 310円）× 80%</strong> があなたへの収益として還元されます。
+          残りは運営の取り分（310円 ＋ 超過分の20%）です。
         </p>
-        {feeState?.error && (
-          <p className="text-xs text-red-600 mt-1">{feeState.error}</p>
-        )}
-        {feeState?.success && (
-          <p className="text-xs text-green-600 mt-1">{feeState.data?.message as string}</p>
-        )}
       </div>
     </div>
   );
