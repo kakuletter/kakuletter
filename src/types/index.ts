@@ -15,7 +15,6 @@ export type UserProfile = {
   subscription_status: "free" | "premium";
   stripe_customer_id: string | null;
   stripe_subscription_id: string | null;
-  subscription_expires_at: string | null;
   custom_id: string | null;
 };
 

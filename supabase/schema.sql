@@ -132,6 +132,21 @@ ALTER TABLE public.letters ADD COLUMN IF NOT EXISTS payout_status TEXT NOT NULL 
 CREATE INDEX IF NOT EXISTS idx_letters_payout_status ON public.letters (payout_status);
 
 -- ==============================================
+-- マイグレーション：決済URL・決済手段対応 (v4)
+-- Supabase の SQL Editor で実行してください
+-- ==============================================
+
+-- 決済URL（PayPay QR / Stripe Checkout のリンク）
+ALTER TABLE public.letters ADD COLUMN IF NOT EXISTS payment_url TEXT;
+
+-- 決済手段（'paypay' または 'stripe'）
+ALTER TABLE public.letters ADD COLUMN IF NOT EXISTS payment_method TEXT NOT NULL DEFAULT 'paypay'
+  CHECK (payment_method IN ('paypay', 'stripe'));
+
+-- Stripe Checkout セッションID（支払い状態の再確認用）
+ALTER TABLE public.letters ADD COLUMN IF NOT EXISTS stripe_session_id TEXT;
+
+-- ==============================================
 -- 最初の管理者を設定する方法
 -- ==============================================
 -- 1. ユーザーを通常登録する
