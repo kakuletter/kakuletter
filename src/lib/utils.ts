@@ -8,6 +8,13 @@ export function generateDisplayId(): string {
   return result;
 }
 
+// 受取人ID（自動ID または カスタムID）の形式チェック。
+// - 自動ID:    KKL- + 英数字5文字（数字始まりあり 例: KKL-7TPQ7）
+// - カスタムID: KKL- + 英字始まり3〜20文字（英数字・ハイフン）
+// 大文字小文字は区別しない（lookup 側で正規化するため）。
+// recipient-fee / send/actions / SendForm で共有する単一の正解。
+export const RECIPIENT_ID_REGEX = /^KKL-([A-Z0-9]{5}|[A-Za-z][A-Za-z0-9-]{2,19})$/i;
+
 export const PREFECTURES = [
   "北海道", "青森県", "岩手県", "宮城県", "秋田県", "山形県", "福島県",
   "茨城県", "栃木県", "群馬県", "埼玉県", "千葉県", "東京都", "神奈川県",

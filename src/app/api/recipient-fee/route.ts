@@ -1,12 +1,13 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { DEFAULT_LETTER_FEE, FREE_TIER_MONTHLY_LIMIT } from "@/lib/stripe";
+import { RECIPIENT_ID_REGEX } from "@/lib/utils";
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const rawId = searchParams.get("id") ?? "";
 
-  if (!/^KKL-[A-Za-z0-9][A-Za-z0-9-]{2,19}$|^KKL-[A-Z0-9]{5}$/.test(rawId)) {
+  if (!RECIPIENT_ID_REGEX.test(rawId)) {
     return NextResponse.json({ exists: false });
   }
 

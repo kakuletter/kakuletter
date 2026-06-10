@@ -4,9 +4,8 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createQRPayment } from "@/lib/paypay";
 import { stripe, DEFAULT_LETTER_FEE, FREE_TIER_MONTHLY_LIMIT, PAYOUT_RATE } from "@/lib/stripe";
+import { RECIPIENT_ID_REGEX } from "@/lib/utils";
 import type { ActionState } from "@/types";
-
-const ID_REGEX = /^KKL-([A-Z0-9]{5}|[A-Za-z][A-Za-z0-9-]{2,19})$/;
 
 export async function createLetterPayment(
   _prevState: ActionState,
@@ -20,7 +19,7 @@ export async function createLetterPayment(
   const rawCustomAmount = formData.get("customAmount");
   const customAmount = rawCustomAmount ? parseInt(rawCustomAmount as string, 10) : null;
 
-  if (!rawId || !ID_REGEX.test(rawId)) {
+  if (!rawId || !RECIPIENT_ID_REGEX.test(rawId)) {
     return { error: "IDの形式が正しくありません（例: KKL-AB3XY）。" };
   }
 

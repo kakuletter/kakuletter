@@ -2,10 +2,10 @@
 
 import { useActionState, useEffect, useState, useCallback, useRef } from "react";
 import { createLetterPayment } from "./actions";
+import { RECIPIENT_ID_REGEX } from "@/lib/utils";
 import type { ActionState } from "@/types";
 
 const initialState: ActionState = {};
-const ID_REGEX = /^KKL-([A-Z0-9]{5}|[A-Za-z][A-Za-z0-9-]{2,19})$/i;
 
 const MIN_CUSTOM_AMOUNT = 500;
 const MAX_CUSTOM_AMOUNT = 50000;
@@ -19,9 +19,17 @@ type RecipientInfo = {
   isCustomId: boolean;
 } | null;
 
+// 入力値を正規化：先頭に貼り付けられた「KKL-」を除去し、使用可能文字以外を取り除く
+function normalizeSuffix(value: string): string {
+  return value
+    .replace(/\s/g, "")
+    .replace(/^kkl-/i, "")
+    .replace(/[^A-Za-z0-9-]/g, "");
+}
+
 export default function SendForm() {
   const [state, formAction, isPending] = useActionState(createLetterPayment, initialState);
-  const [recipientId, setRecipientId] = useState("");
+  const [idSuffix, setIdSuffix] = useState("");
   const [recipientInfo, setRecipientInfo] = useState<RecipientInfo>(null);
   const [fetching, setFetching] = useState(false);
   const [customAmount, setCustomAmount] = useState(1000);
@@ -41,7 +49,7 @@ export default function SendForm() {
   }, [state]);
 
   const fetchRecipientInfo = useCallback(async (id: string) => {
-    if (!ID_REGEX.test(id)) {
+    if (!RECIPIENT_ID_REGEX.test(id)) {
       setRecipientInfo(null);
       return;
     }
@@ -57,10 +65,12 @@ export default function SendForm() {
     }
   }, []);
 
+  const fullId = idSuffix ? `KKL-${idSuffix}` : "";
+
   useEffect(() => {
-    const timer = setTimeout(() => fetchRecipientInfo(recipientId), 500);
+    const timer = setTimeout(() => fetchRecipientInfo(fullId), 500);
     return () => clearTimeout(timer);
-  }, [recipientId, fetchRecipientInfo]);
+  }, [fullId, fetchRecipientInfo]);
 
   function submit(method: "paypay" | "stripe") {
     if (methodRef.current) methodRef.current.value = method;
@@ -93,20 +103,25 @@ export default function SendForm() {
         <label className="block text-sm font-medium text-stone-700 mb-1.5">
           受取人のKAKULETTER ID <span className="text-rose-600">*</span>
         </label>
-        <input
-          type="text"
-          name="recipient_display_id"
-          placeholder="KKL-XXXXX"
-          required
-          maxLength={25}
-          value={recipientId}
-          onChange={(e) => setRecipientId(e.target.value)}
-          className="w-full border border-stone-300 rounded-xl px-4 py-3 text-base font-mono tracking-widest focus:outline-none focus:ring-2 focus:ring-rose-400"
-        />
+        <input type="hidden" name="recipient_display_id" value={fullId} />
+        <div className="flex items-stretch rounded-xl border border-stone-300 overflow-hidden focus-within:ring-2 focus-within:ring-rose-400">
+          <span className="inline-flex items-center px-4 bg-stone-100 text-stone-500 font-mono text-base tracking-widest select-none border-r border-stone-300">
+            KKL-
+          </span>
+          <input
+            type="text"
+            inputMode="text"
+            placeholder="XXXXX"
+            maxLength={20}
+            value={idSuffix}
+            onChange={(e) => setIdSuffix(normalizeSuffix(e.target.value))}
+            className="flex-1 min-w-0 px-4 py-3 text-base font-mono tracking-widest focus:outline-none"
+          />
+        </div>
         <p className="text-xs text-stone-400 mt-1.5">
-          文通相手から教えてもらったIDを入力してください。
+          文通相手から教えてもらったIDの「KKL-」より後ろを入力してください。
         </p>
-        {recipientId && ID_REGEX.test(recipientId) && !fetching && (
+        {fullId && RECIPIENT_ID_REGEX.test(fullId) && !fetching && (
           <p className={`text-xs mt-1.5 ${recipientFound ? "text-green-600" : "text-red-500"}`}>
             {recipientFound
               ? isCustomId
@@ -211,12 +226,12 @@ export default function SendForm() {
         </div>
       )}
 
-      {!recipientFound && !fetching && recipientId && ID_REGEX.test(recipientId) && (
+      {!recipientFound && !fetching && fullId && RECIPIENT_ID_REGEX.test(fullId) && (
         <p className="text-center text-xs text-stone-400">
           有効なIDを入力すると決済ボタンが表示されます。
         </p>
       )}
-      {!recipientId && (
+      {!idSuffix && (
         <p className="text-center text-xs text-stone-400">
           受取人IDを入力すると決済ボタンが表示されます。
         </p>
