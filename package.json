@@ -6,13 +6,12 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "eslint ."
   },
   "dependencies": {
     "@paypayopa/paypayopa-sdk-node": "^2.1.0",
     "@supabase/ssr": "^0.6.1",
     "@supabase/supabase-js": "^2.49.4",
-    "@types/qrcode": "^1.5.6",
     "jsqr": "^1.4.0",
     "next": "^16.2.6",
     "qrcode": "^1.5.4",
@@ -22,14 +21,13 @@
   },
   "devDependencies": {
     "@types/node": "^20",
+    "@types/qrcode": "^1.5.6",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "autoprefixer": "^10.0.1",
     "eslint": "^9",
-    "eslint-config-next": "15.3.2",
+    "eslint-config-next": "^16.2.6",
     "postcss": "^8",
-    "potrace": "^2.1.8",
-    "puppeteer": "^25.1.0",
     "tailwindcss": "^3.4.1",
     "typescript": "^5"
   }
