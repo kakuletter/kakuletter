@@ -144,7 +144,9 @@ export async function createLetterPayment(
         success: true,
         data: { letterId: letter.id, paymentUrl: session.url, fee, paymentMethod: "stripe" },
       };
-    } catch {
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      console.error("[Stripe] letter checkout error:", message);
       await adminClient.from("letters").delete().eq("id", letter.id);
       return { error: "決済の準備に失敗しました。時間をおいて再度お試しください。" };
     }
