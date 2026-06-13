@@ -25,9 +25,9 @@ function normalizeSuffix(value: string): string {
     .replace(/[^A-Za-z0-9-]/g, "");
 }
 
-export default function SendForm() {
+export default function SendForm({ initialId = "" }: { initialId?: string }) {
   const [state, formAction, isPending] = useActionState(createLetterPayment, initialState);
-  const [idSuffix, setIdSuffix] = useState("");
+  const [idSuffix, setIdSuffix] = useState(() => normalizeSuffix(initialId));
   const [recipientInfo, setRecipientInfo] = useState<RecipientInfo>(null);
   const [fetching, setFetching] = useState(false);
   const [customAmount, setCustomAmount] = useState(1000);

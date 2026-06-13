@@ -43,7 +43,7 @@ export default async function CreatorPage() {
                 </span>
                 <label>
                   <span className="visually-hidden">配信者名またはKKL-ID</span>
-                  <input type="search" name="q" placeholder="KKL-IDを入力" />
+                  <input type="search" name="id" placeholder="KKL-IDを入力" />
                 </label>
                 <button type="submit">送る</button>
               </form>
@@ -310,7 +310,7 @@ export default async function CreatorPage() {
             <div className="faq-list reveal">
               <details>
                 <summary>手紙を送る料金はいくらですか？<span /></summary>
-                <p>基本料金は1通310円です。配信者への手紙のみ、応援金を0円から自由に設定できます。個人間の手紙に応援金はありません。運営宛ての郵送料は別途必要です。</p>
+                <p>基本料金は1通310円です。カスタムID宛には、送り手が転送手数料を500〜50,000円の範囲で設定でき、310円を超えた分の80%が受取人への応援金として還元されます。運営宛ての郵送料は別途必要です。</p>
               </details>
               <details>
                 <summary>送り手も会員登録が必要ですか？<span /></summary>

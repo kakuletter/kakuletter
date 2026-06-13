@@ -9,7 +9,12 @@ export const metadata = {
   title: "手紙を送る | KAKULETTER",
 };
 
-export default async function SendPage() {
+export default async function SendPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ id?: string }>;
+}) {
+  const { id } = await searchParams;
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
 
@@ -37,7 +42,7 @@ export default async function SendPage() {
           </div>
 
           <div className="flow-layout">
-            <SendForm />
+            <SendForm initialId={id ?? ""} />
 
             <aside className="steps-card">
               <p className="eyebrow">HOW TO SEND</p>
