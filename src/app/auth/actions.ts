@@ -63,6 +63,9 @@ export async function registerUser(
 
   const adminClient = createAdminClient();
 
+  let profileCreated = false;
+  let registerError = "ID発行に失敗しました。再度お試しください。";
+
   for (let attempt = 0; attempt < 10; attempt++) {
     const displayId = generateDisplayId();
     const { error: insertError } = await adminClient.from("users").insert({
@@ -78,21 +81,28 @@ export async function registerUser(
     });
 
     if (!insertError) {
+      profileCreated = true;
       break;
     }
 
     if (insertError.code === "23503") {
       // signUp が既存メールアドレスに対して偽のユーザーIDを返した場合
+      // （新規 auth ユーザーは作成されていないため削除不要）
       return { error: "このメールアドレスはすでに登録されています。" };
     }
     if (insertError.code !== "23505") {
       console.error("[register] insert error:", insertError.code, insertError.message);
-      return { error: "プロフィールの作成に失敗しました。時間をおいて再度お試しください。" };
+      registerError = "プロフィールの作成に失敗しました。時間をおいて再度お試しください。";
+      break;
     }
+    // 23505 = display_id 衝突 → 別IDで再試行
+  }
 
-    if (attempt === 9) {
-      return { error: "ID発行に失敗しました。再度お試しください。" };
-    }
+  if (!profileCreated) {
+    // プロフィール作成に失敗した場合、孤立した Auth ユーザーを削除して
+    // 同じメールアドレスで再登録できるようにする（原子性の担保）
+    await adminClient.auth.admin.deleteUser(authData.user.id).catch(() => {});
+    return { error: registerError };
   }
 
   // メール確認が必要な場合はダッシュボードへ遷移せず完了メッセージを返す

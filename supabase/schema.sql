@@ -62,10 +62,10 @@ ALTER TABLE public.letters ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "users_select_own" ON public.users
   FOR SELECT USING (auth.uid() = auth_id);
 
--- users: 自分のプロフィールのみ更新可（display_id と is_admin は変更不可）
-CREATE POLICY "users_update_own" ON public.users
-  FOR UPDATE USING (auth.uid() = auth_id)
-  WITH CHECK (auth.uid() = auth_id);
+-- ※ users への UPDATE/INSERT/DELETE ポリシーは意図的に作成しない。
+--   行レベルのみの UPDATE ポリシーでは列を制限できず、認証ユーザーが
+--   自分の is_admin や stripe_connect_account_id 等を改ざんできてしまうため。
+--   プロフィール更新はすべてサーバー側の service_role 経由で行う。
 
 -- letters: 自分宛の手紙のみ読み取り可
 CREATE POLICY "letters_select_own" ON public.letters
@@ -158,6 +158,16 @@ ALTER TABLE public.users ADD COLUMN IF NOT EXISTS stripe_connect_account_id TEXT
 -- 手紙の決済が direct charge で作成された連結アカウントID。
 -- 支払い状態の再確認（letter-check）時に、この連結アカウント上のセッションを参照する。
 ALTER TABLE public.letters ADD COLUMN IF NOT EXISTS stripe_connect_account_id TEXT;
+
+-- ==============================================
+-- マイグレーション：RLS 権限昇格の修正 (v6) ★セキュリティ重要
+-- Supabase の SQL Editor で必ず実行してください
+-- ==============================================
+
+-- 行レベルのみの UPDATE ポリシーは列を制限できず、認証ユーザーが
+-- 自分の is_admin=true や stripe_connect_account_id 等を改ざんできてしまう。
+-- プロフィール更新はすべて service_role 経由で行うため、このポリシーを削除する。
+DROP POLICY IF EXISTS "users_update_own" ON public.users;
 
 -- ==============================================
 -- 最初の管理者を設定する方法

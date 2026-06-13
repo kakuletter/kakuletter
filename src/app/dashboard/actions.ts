@@ -24,10 +24,13 @@ export async function updateCustomId(
 
   if (!rawCustomId) {
     // カスタムIDを削除（空欄送信で自動IDに戻す）
-    await adminClient
+    const { error: delError } = await adminClient
       .from("users")
       .update({ custom_id: null })
       .eq("auth_id", user.id);
+    if (delError) {
+      return { error: "更新に失敗しました。時間をおいて再度お試しください。" };
+    }
     return { success: true, data: { message: "カスタムIDを削除しました。" } };
   }
 
@@ -60,10 +63,19 @@ export async function updateCustomId(
     return { error: "このIDは使用できません。別のIDをお試しください。" };
   }
 
-  await adminClient
+  const { error: updateError } = await adminClient
     .from("users")
     .update({ custom_id: rawCustomId })
     .eq("auth_id", user.id);
+
+  if (updateError) {
+    // DB の UNIQUE 制約により、チェックと更新の間の競合もここで弾かれる
+    if (updateError.code === "23505") {
+      return { error: "このカスタムIDはすでに使用されています。別のIDをお試しください。" };
+    }
+    console.error("[updateCustomId] update error:", updateError.code, updateError.message);
+    return { error: "更新に失敗しました。時間をおいて再度お試しください。" };
+  }
 
   return { success: true, data: { message: `カスタムID「${rawCustomId}」を設定しました。` } };
 }
