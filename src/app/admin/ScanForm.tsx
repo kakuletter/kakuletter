@@ -9,6 +9,56 @@ import jsQR from "jsqr";
 
 const initialState: ActionState = {};
 
+// ネイティブ BarcodeDetector（標準DOM型に含まれないため最小定義）
+type DetectedBarcode = { rawValue: string };
+interface BarcodeDetectorInstance {
+  detect(source: ImageBitmapSource): Promise<DetectedBarcode[]>;
+}
+interface BarcodeDetectorCtor {
+  new (options?: { formats?: string[] }): BarcodeDetectorInstance;
+}
+
+// ImageBitmap を指定の最大辺に縮小して ImageData を得る
+function bitmapToImageData(bitmap: ImageBitmap, maxDim: number): ImageData | null {
+  const scale = Math.min(1, maxDim / Math.max(bitmap.width, bitmap.height));
+  const w = Math.max(1, Math.round(bitmap.width * scale));
+  const h = Math.max(1, Math.round(bitmap.height * scale));
+  const canvas = document.createElement("canvas");
+  canvas.width = w;
+  canvas.height = h;
+  const ctx = canvas.getContext("2d", { willReadFrequently: true });
+  if (!ctx) return null;
+  ctx.drawImage(bitmap, 0, 0, w, h);
+  return ctx.getImageData(0, 0, w, h);
+}
+
+async function decodeQrFromFile(file: File): Promise<string | null> {
+  // EXIF の向きを反映して読み込む（スマホ写真の回転対策）
+  const bitmap = await createImageBitmap(file, { imageOrientation: "from-image" });
+  try {
+    // 1) ネイティブ BarcodeDetector（Android Chrome 等。画面越し撮影にも強い）
+    const Ctor = (window as unknown as { BarcodeDetector?: BarcodeDetectorCtor }).BarcodeDetector;
+    if (Ctor) {
+      try {
+        const detector = new Ctor({ formats: ["qr_code"] });
+        const codes = await detector.detect(bitmap);
+        if (codes[0]?.rawValue) return codes[0].rawValue;
+      } catch { /* jsQR にフォールバック */ }
+    }
+
+    // 2) jsQR フォールバック：複数解像度で試行（モアレ・低解像度対策）
+    for (const maxDim of [bitmap.width, 1600, 1000, 700]) {
+      const data = bitmapToImageData(bitmap, maxDim);
+      if (!data) continue;
+      const code = jsQR(data.data, data.width, data.height, { inversionAttempts: "attemptBoth" });
+      if (code?.data) return code.data;
+    }
+    return null;
+  } finally {
+    bitmap.close();
+  }
+}
+
 export default function ScanForm() {
   const [state, formAction, isScanning] = useActionState(scanBarcode, initialState);
   const [forwarding, setForwarding] = useState(false);
@@ -22,35 +72,25 @@ export default function ScanForm() {
   async function handleImageUpload(e: React.ChangeEvent<HTMLInputElement>) {
     setImageError("");
     const file = e.target.files?.[0];
-    if (!file) return;
-
-    const img = new Image();
-    const url = URL.createObjectURL(file);
-    img.src = url;
-
-    img.onload = () => {
-      const canvas = document.createElement("canvas");
-      canvas.width = img.width;
-      canvas.height = img.height;
-      const ctx = canvas.getContext("2d");
-      if (!ctx) return;
-      ctx.drawImage(img, 0, 0);
-      const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-      const code = jsQR(imageData.data, imageData.width, imageData.height);
-      URL.revokeObjectURL(url);
-
-      if (code) {
-        setDecodedId(code.data);
-        if (inputRef.current) inputRef.current.value = code.data;
+    if (!file) {
+      return;
+    }
+    try {
+      const data = await decodeQrFromFile(file);
+      if (data) {
+        setDecodedId(data);
+        if (inputRef.current) inputRef.current.value = data;
       } else {
-        setImageError("QRコードを読み取れませんでした。画像を確認してください。");
+        setImageError(
+          "QRコードを読み取れませんでした。QRコードを画面いっぱいに大きく・明るく写してください。画面越しの撮影は反射やモアレで読み取りにくくなります（印刷物のほうが確実です）。"
+        );
       }
-    };
-
-    img.onerror = () => {
+    } catch {
       setImageError("画像の読み込みに失敗しました。");
-      URL.revokeObjectURL(url);
-    };
+    } finally {
+      // 同じ画像を選び直して再試行できるようにリセット
+      e.target.value = "";
+    }
   }
 
   async function handleForward() {
