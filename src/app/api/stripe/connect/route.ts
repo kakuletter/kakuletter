@@ -24,6 +24,13 @@ export async function POST() {
 
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
 
+  // direct charge では受取人自身がカード決済の加盟店になるため、
+  // card_payments と transfers の両方の capability が必要。
+  const capabilities = {
+    card_payments: { requested: true },
+    transfers: { requested: true },
+  };
+
   try {
     // 連結アカウントを取得または新規作成（Express）
     let accountId = profile.stripe_connect_account_id;
@@ -32,15 +39,16 @@ export async function POST() {
         type: "express",
         country: "JP",
         email: profile.email,
-        capabilities: {
-          transfers: { requested: true },
-        },
+        capabilities,
       });
       accountId = account.id;
       await adminClient
         .from("users")
         .update({ stripe_connect_account_id: accountId })
         .eq("auth_id", user.id);
+    } else {
+      // 既存アカウントに不足している capability（card_payments 等）を追加要求する
+      await stripe.accounts.update(accountId, { capabilities });
     }
 
     // オンボーディング用のリンクを生成

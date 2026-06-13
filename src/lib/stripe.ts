@@ -17,12 +17,18 @@ export function calculateSplit(fee: number): { operatorCut: number; payoutAmount
   return { operatorCut, payoutAmount };
 }
 
-// Connect 連結アカウントが送金を受け取れる状態か確認する。
-// （オンボーディング完了済み・transfers 有効・payouts 有効）
+// Connect 連結アカウントが direct charge を処理できる状態か確認する。
+// direct charge では受取人がカード決済の加盟店になるため、card_payments と
+// transfers の両 capability が有効で、charges/payouts が有効である必要がある。
 export async function isConnectAccountReady(accountId: string): Promise<boolean> {
   try {
     const account = await stripe.accounts.retrieve(accountId);
-    return account.payouts_enabled === true && account.capabilities?.transfers === "active";
+    return (
+      account.charges_enabled === true &&
+      account.payouts_enabled === true &&
+      account.capabilities?.card_payments === "active" &&
+      account.capabilities?.transfers === "active"
+    );
   } catch {
     return false;
   }
