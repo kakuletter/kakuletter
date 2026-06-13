@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import Header from "@/components/Header";
+import SiteFooter from "@/components/SiteFooter";
 import RevealInit from "@/components/landing/RevealInit";
 
 export const metadata = {
@@ -162,36 +163,7 @@ export default async function HomePage() {
         </section>
       </main>
 
-      <footer className="site-footer">
-        <div className="container footer-top">
-          <Link className="brand footer-brand" href="/">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img className="brand-logo" src="/logo.svg" alt="" />
-            <span className="brand-name">KAKULETTER</span>
-          </Link>
-          <div className="footer-links">
-            <div>
-              <strong>メニュー</strong>
-              <Link href="#top">ページ上部</Link>
-              <Link href="/send">手紙を送る</Link>
-              <Link href="/auth/register">受取人になる</Link>
-            </div>
-            <div>
-              <strong>配信者への応援</strong>
-              <Link href="/creator">配信者・推し活向けトップ</Link>
-            </div>
-            <div>
-              <strong>サポート</strong>
-              <Link href="/creator#faq">よくある質問</Link>
-              <Link href="/legal">特定商取引法に基づく表記</Link>
-            </div>
-          </div>
-        </div>
-        <div className="container footer-bottom">
-          <p>住所を知らなくても、本物の手紙は届けられる。</p>
-          <small>&copy; 2026 KAKULETTER</small>
-        </div>
-      </footer>
+      <SiteFooter />
     </div>
   );
 }

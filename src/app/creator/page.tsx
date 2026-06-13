@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import Header from "@/components/Header";
-import LandingFooter from "@/components/landing/LandingFooter";
+import SiteFooter from "@/components/SiteFooter";
 import RevealInit from "@/components/landing/RevealInit";
 
 export const metadata = {
@@ -347,7 +347,7 @@ export default async function CreatorPage() {
         </section>
       </main>
 
-      <LandingFooter />
+      <SiteFooter />
     </>
   );
 }

@@ -1,4 +1,6 @@
-import Link from "next/link";
+import { createClient } from "@/lib/supabase/server";
+import Header from "@/components/Header";
+import SiteFooter from "@/components/SiteFooter";
 
 export const metadata = {
   title: "特定商取引法に基づく表示 | KAKULETTER",
@@ -18,16 +20,13 @@ const items = [
   { label: "動作環境", value: "最新バージョンの Chrome / Safari / Edge を推奨します" },
 ];
 
-export default function LegalPage() {
+export default async function LegalPage() {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+
   return (
-    <div className="min-h-screen flex flex-col bg-[#fbf8f3]">
-      <header className="border-b border-stone-200 bg-white">
-        <div className="max-w-5xl mx-auto px-4 h-14 flex items-center">
-          <Link href="/" className="font-bold text-xl tracking-widest text-rose-700">
-            KAKULETTER
-          </Link>
-        </div>
-      </header>
+    <div className="app-shell" style={{ display: "flex", flexDirection: "column" }}>
+      <Header isLoggedIn={!!user} />
 
       <main className="flex-1 max-w-2xl mx-auto w-full px-4 py-12">
         <h1 className="text-2xl font-bold text-stone-900 mb-2">
@@ -54,9 +53,7 @@ export default function LegalPage() {
         </div>
       </main>
 
-      <footer className="bg-stone-900 text-stone-400 text-center py-6 text-sm">
-        <p>&copy; 2025 KAKULETTER</p>
-      </footer>
+      <SiteFooter />
     </div>
   );
 }

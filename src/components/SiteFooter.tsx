@@ -1,6 +1,7 @@
 import Link from "next/link";
 
-export default function LandingFooter() {
+// 全ページ共通のフッター
+export default function SiteFooter() {
   return (
     <footer className="site-footer">
       <div className="container footer-top">
@@ -11,27 +12,27 @@ export default function LandingFooter() {
         </Link>
         <div className="footer-links">
           <div>
-            <strong>サービス</strong>
-            <Link href="/creator#about">KAKULETTERとは</Link>
-            <Link href="/creator#how">使い方</Link>
-            <Link href="/">友達との文通</Link>
-            <Link href="/creator#faq">よくある質問</Link>
+            <strong>メニュー</strong>
+            <Link href="/">友達向けトップ</Link>
+            <Link href="/creator">配信者向けトップ</Link>
+            <Link href="/send">手紙を送る</Link>
+          </div>
+          <div>
+            <strong>アカウント</strong>
+            <Link href="/auth/register">新規登録</Link>
+            <Link href="/auth/login">ログイン</Link>
+            <Link href="/dashboard">マイページ</Link>
           </div>
           <div>
             <strong>サポート</strong>
+            <Link href="/creator#faq">よくある質問</Link>
             <Link href="/legal">特定商取引法に基づく表記</Link>
             <Link href="/privacy">プライバシーポリシー</Link>
-          </div>
-          <div>
-            <strong>はじめる</strong>
-            <Link href="/send">手紙を送る</Link>
-            <Link href="/auth/register">新規登録</Link>
-            <Link href="/dashboard">マイページ</Link>
           </div>
         </div>
       </div>
       <div className="container footer-bottom">
-        <p>想いと応援を一通に。</p>
+        <p>住所を知らなくても、本物の手紙は届けられる。</p>
         <small>&copy; 2026 KAKULETTER</small>
       </div>
     </footer>
