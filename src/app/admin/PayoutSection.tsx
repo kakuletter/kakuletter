@@ -46,36 +46,28 @@ export default function PayoutSection({ letters }: Props) {
   }
 
   if (letters.length === 0) {
-    return (
-      <p className="text-sm text-stone-400 text-center py-4">精算待ちの収益はありません</p>
-    );
+    return <p className="empty-row">精算待ちの収益はありません</p>;
   }
 
   return (
-    <div className="space-y-4">
-      {message && (
-        <p className="text-sm text-green-600 bg-green-50 border border-green-200 rounded-lg px-4 py-2">
-          {message}
-        </p>
-      )}
+    <div>
+      {message && <div className="form-success" style={{ marginBottom: 14 }}>{message}</div>}
 
-      <div className="overflow-x-auto">
-        <table className="w-full text-sm">
-          <thead className="bg-stone-50 border-b border-stone-200">
+      <div className="admin-table-wrap">
+        <table className="admin-table">
+          <thead>
             <tr>
-              <th className="px-4 py-2 text-left">
-                <input type="checkbox" checked={selected.size === letters.length} onChange={toggleAll} />
-              </th>
-              <th className="px-4 py-2 text-left text-stone-600 font-medium">受取人ID</th>
-              <th className="px-4 py-2 text-left text-stone-600 font-medium">手数料</th>
-              <th className="px-4 py-2 text-left text-stone-600 font-medium">支払額（80%）</th>
-              <th className="px-4 py-2 text-left text-stone-600 font-medium">受付日</th>
+              <th><input type="checkbox" checked={selected.size === letters.length} onChange={toggleAll} /></th>
+              <th>受取人ID</th>
+              <th>手数料</th>
+              <th>支払額（80%）</th>
+              <th>受付日</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-stone-100">
+          <tbody>
             {letters.map((l) => (
-              <tr key={l.id} className={selected.has(l.id) ? "bg-amber-50" : ""}>
-                <td className="px-4 py-2">
+              <tr key={l.id} className={selected.has(l.id) ? "is-selected" : ""}>
+                <td>
                   <input
                     type="checkbox"
                     checked={selected.has(l.id)}
@@ -87,26 +79,25 @@ export default function PayoutSection({ letters }: Props) {
                     }}
                   />
                 </td>
-                <td className="px-4 py-2 font-mono text-stone-900">{l.recipient_display_id}</td>
-                <td className="px-4 py-2 text-stone-600">¥{l.fee_amount.toLocaleString()}</td>
-                <td className="px-4 py-2 font-medium text-amber-700">¥{l.payout_amount.toLocaleString()}</td>
-                <td className="px-4 py-2 text-stone-400">
-                  {new Date(l.received_at).toLocaleDateString("ja-JP")}
-                </td>
+                <td style={{ fontFamily: "monospace", fontWeight: 700 }}>{l.recipient_display_id}</td>
+                <td style={{ color: "var(--muted)" }}>¥{l.fee_amount.toLocaleString()}</td>
+                <td style={{ color: "var(--rose)", fontWeight: 700 }}>¥{l.payout_amount.toLocaleString()}</td>
+                <td style={{ color: "var(--muted)" }}>{new Date(l.received_at).toLocaleDateString("ja-JP")}</td>
               </tr>
             ))}
           </tbody>
         </table>
       </div>
 
-      <div className="flex items-center justify-between pt-2 border-t border-stone-200">
-        <p className="text-sm text-stone-600">
-          選択：{selected.size}件　合計：<span className="font-bold text-amber-700">¥{total.toLocaleString()}</span>
+      <div className="payout-bar">
+        <p style={{ margin: 0 }}>
+          選択：{selected.size}件　合計：<strong>¥{total.toLocaleString()}</strong>
         </p>
         <button
+          type="button"
+          className="action-button is-compact"
           onClick={handlePayout}
           disabled={selected.size === 0 || isPending}
-          className="bg-amber-600 text-white px-5 py-2 rounded-lg text-sm font-medium hover:bg-amber-700 disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {isPending ? "処理中..." : "精算済みにする"}
         </button>

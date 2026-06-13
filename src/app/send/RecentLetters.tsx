@@ -19,25 +19,16 @@ export default function RecentLetters() {
   if (ids.length === 0) return null;
 
   return (
-    <div className="mt-6 bg-amber-50 border border-amber-200 rounded-2xl p-5">
-      <p className="text-sm font-medium text-amber-800 mb-3">
-        このブラウザで最近送った手紙
-      </p>
-      <ul className="space-y-2">
+    <div className="recent-letters">
+      <p>このブラウザで最近送った手紙</p>
+      <ul>
         {ids.map((id) => (
           <li key={id}>
-            <Link
-              href={`/letters/${id}`}
-              className="text-sm text-amber-700 underline hover:text-amber-900 font-mono break-all"
-            >
-              /letters/{id}
-            </Link>
+            <Link href={`/letters/${id}`}>/letters/{id}</Link>
           </li>
         ))}
       </ul>
-      <p className="text-xs text-amber-600 mt-3">
-        ※ このブラウザ・端末でのみ表示されます
-      </p>
+      <small>※ このブラウザ・端末でのみ表示されます</small>
     </div>
   );
 }

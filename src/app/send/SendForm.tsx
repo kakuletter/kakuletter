@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useEffect, useState, useCallback, useRef } from "react";
+import { useActionState, useEffect, useState, useCallback } from "react";
 import { createLetterPayment } from "./actions";
 import { RECIPIENT_ID_REGEX } from "@/lib/utils";
 import type { ActionState } from "@/types";
@@ -31,8 +31,7 @@ export default function SendForm() {
   const [recipientInfo, setRecipientInfo] = useState<RecipientInfo>(null);
   const [fetching, setFetching] = useState(false);
   const [customAmount, setCustomAmount] = useState(1000);
-  const formRef = useRef<HTMLFormElement>(null);
-  const methodRef = useRef<HTMLInputElement>(null);
+  const [method, setMethod] = useState<"paypay" | "stripe">("paypay");
 
   // 決済URLが返ってきたらリダイレクト
   useEffect(() => {
@@ -54,8 +53,7 @@ export default function SendForm() {
     setFetching(true);
     try {
       const res = await fetch(`/api/recipient-fee?id=${encodeURIComponent(id)}`);
-      const data = await res.json();
-      setRecipientInfo(data);
+      setRecipientInfo(await res.json());
     } catch {
       setRecipientInfo(null);
     } finally {
@@ -70,41 +68,34 @@ export default function SendForm() {
     return () => clearTimeout(timer);
   }, [fullId, fetchRecipientInfo]);
 
-  function submit(method: "paypay" | "stripe") {
-    if (methodRef.current) methodRef.current.value = method;
-    formRef.current?.requestSubmit();
+  const isCustomId = recipientInfo?.isCustomId ?? false;
+  const recipientFound = recipientInfo?.exists ?? false;
+  const validFormat = !!fullId && RECIPIENT_ID_REGEX.test(fullId);
+  const canSubmit = !isPending && !state?.success && recipientFound;
+  const paymentMethod = isCustomId ? "stripe" : method;
+
+  const total = isCustomId ? customAmount : 310;
+  const operatorCut = 310 + Math.floor((customAmount - 310) * 0.2);
+  const payout = customAmount - operatorCut;
+
+  function clampAmount(v: number) {
+    if (Number.isNaN(v)) return MIN_CUSTOM_AMOUNT;
+    return Math.min(MAX_CUSTOM_AMOUNT, Math.max(MIN_CUSTOM_AMOUNT, v));
   }
 
-  const isCustomId = recipientInfo?.isCustomId ?? false;
-  const recipientFound = recipientInfo?.exists;
-  const canSubmit = !isPending && !state?.success && recipientFound;
-
   return (
-    <form ref={formRef} action={formAction} className="space-y-5">
-      <input type="hidden" name="paymentMethod" ref={methodRef} defaultValue="paypay" />
-      <input type="hidden" name="customAmount" value={isCustomId ? customAmount : ""} readOnly />
+    <form action={formAction} className="main-card send-form">
+      <input type="hidden" name="recipient_display_id" value={fullId} />
+      <input type="hidden" name="customAmount" value={isCustomId ? customAmount : ""} />
+      <input type="hidden" name="paymentMethod" value={paymentMethod} />
 
-      {state?.error && (
-        <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-xl px-4 py-3">
-          {state.error}
-        </div>
-      )}
-      {state?.success && (
-        <div className="bg-stone-50 border border-stone-200 text-stone-600 text-sm rounded-xl px-4 py-3 text-center">
-          決済ページに移動します...
-        </div>
-      )}
+      {state?.error && <div className="form-error">{state.error}</div>}
+      {state?.success && <div className="form-success">決済ページに移動します...</div>}
 
-      {/* 受取人ID */}
-      <div>
-        <label className="block text-sm font-medium text-stone-700 mb-1.5">
-          受取人のKAKULETTER ID <span className="text-rose-600">*</span>
-        </label>
-        <input type="hidden" name="recipient_display_id" value={fullId} />
-        <div className="flex items-stretch rounded-xl border border-stone-300 overflow-hidden focus-within:ring-2 focus-within:ring-rose-400">
-          <span className="inline-flex items-center px-4 bg-stone-100 text-stone-500 font-mono text-base tracking-widest select-none border-r border-stone-300">
-            KKL-
-          </span>
+      <label>
+        受取人のKAKULETTER ID <em>*</em>
+        <span className="id-input">
+          <b>KKL-</b>
           <input
             type="text"
             inputMode="text"
@@ -112,121 +103,123 @@ export default function SendForm() {
             maxLength={20}
             value={idSuffix}
             onChange={(e) => setIdSuffix(normalizeSuffix(e.target.value))}
-            className="flex-1 min-w-0 px-4 py-3 text-base font-mono tracking-widest focus:outline-none"
           />
+        </span>
+        <small>文通相手から教えてもらったIDの「KKL-」より後ろを入力してください。</small>
+      </label>
+
+      {validFormat && !fetching && recipientFound && (
+        <div className="recipient-result">
+          <span className="recipient-avatar">{idSuffix.charAt(0).toUpperCase() || "K"}</span>
+          <div>
+            <small>受取人</small>
+            <strong>{fullId}</strong>
+          </div>
+          <b>{isCustomId ? "応援できます" : "確認済み"}</b>
         </div>
-        <p className="text-xs text-stone-400 mt-1.5">
-          文通相手から教えてもらったIDの「KKL-」より後ろを入力してください。
-        </p>
-        {fullId && RECIPIENT_ID_REGEX.test(fullId) && !fetching && (
-          <p className={`text-xs mt-1.5 ${recipientFound ? "text-green-600" : "text-red-500"}`}>
-            {recipientFound
-              ? isCustomId
-                ? "✓ カスタムIDが見つかりました"
-                : "✓ 受取人が見つかりました"
-              : "このIDは登録されていません"}
-          </p>
-        )}
-        {fetching && <p className="text-xs text-stone-400 mt-1.5">確認中...</p>}
+      )}
+      {validFormat && !fetching && !recipientFound && (
+        <p className="form-error" style={{ margin: 0 }}>このIDは登録されていません。</p>
+      )}
+      {fetching && <p style={{ margin: 0, color: "var(--muted)", fontSize: 12 }}>確認中...</p>}
+
+      {/* 基本料金 */}
+      <div className="fee-box">
+        <span><strong>基本料金</strong><small>1通あたり</small></span>
+        <strong>310円</strong>
       </div>
 
-      {/* カスタムID宛：金額入力 */}
+      {/* カスタムID宛：応援金（合計額を設定） */}
       {recipientFound && isCustomId && (
-        <div className="space-y-3">
-          <div className="bg-amber-50 border border-amber-100 rounded-xl px-4 py-3 text-sm text-amber-800">
-            このIDはプレミアム会員のカスタムIDです。<strong>500円〜50,000円</strong>の範囲で転送手数料を設定してください。
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-stone-700 mb-2">
-              転送手数料：<span className="text-lg font-bold text-rose-700">{customAmount.toLocaleString()}円</span>
-            </label>
+        <div className="support-field">
+          <span className="support-label-row">
+            <strong>転送手数料（応援金込み）</strong>
+            <small>500円〜50,000円の範囲で設定できます。</small>
+          </span>
+          <span className="money-input">
+            <b>¥</b>
             <input
-              type="range"
+              type="number"
               min={MIN_CUSTOM_AMOUNT}
               max={MAX_CUSTOM_AMOUNT}
               step={100}
+              inputMode="numeric"
               value={customAmount}
               onChange={(e) => setCustomAmount(Number(e.target.value))}
-              className="w-full accent-rose-600"
+              onBlur={(e) => setCustomAmount(clampAmount(Number(e.target.value)))}
             />
-            <div className="flex justify-between text-xs text-stone-400 mt-1">
-              <span>500円</span>
-              <span>50,000円</span>
-            </div>
-          </div>
-          <div className="flex flex-wrap gap-2">
+          </span>
+          <div className="quick-amounts">
             {QUICK_AMOUNTS.map((amt) => (
               <button
                 key={amt}
                 type="button"
+                className={customAmount === amt ? "is-active" : ""}
                 onClick={() => setCustomAmount(amt)}
-                className={`px-3 py-1.5 rounded-full text-sm border transition-colors ${
-                  customAmount === amt
-                    ? "bg-rose-700 text-white border-rose-700"
-                    : "bg-white text-stone-700 border-stone-300 hover:border-rose-400"
-                }`}
               >
                 {amt.toLocaleString()}円
               </button>
             ))}
           </div>
-          <div className="bg-rose-50 border border-rose-100 rounded-xl px-4 py-3 text-xs text-stone-600 space-y-1">
-            <p>・運営受取：<strong>{(310 + Math.floor((customAmount - 310) * 0.2)).toLocaleString()}円</strong>（310円 + 超過分20%）</p>
-            <p>・受取人受取：<strong>{Math.floor((customAmount - 310) * 0.8).toLocaleString()}円</strong>（超過分80%）</p>
+          <div className="split-note">
+            <p>・運営受取：<strong>{operatorCut.toLocaleString()}円</strong>（310円 + 超過分20%）</p>
+            <p>・受取人受取：<strong>{payout.toLocaleString()}円</strong>（超過分80%）</p>
           </div>
         </div>
       )}
 
-      {/* 通常ID宛：固定310円 */}
-      {recipientFound && !isCustomId && (
-        <div className="bg-rose-50 border border-rose-100 rounded-xl px-4 py-3 text-sm text-rose-800">
-          転送手数料：<strong>310円</strong>（固定）
-        </div>
+      {/* お支払い合計 */}
+      <div className="total-box">
+        <span>
+          <strong>お支払い合計</strong>
+          <small>{isCustomId ? "基本料金310円 ＋ 応援金" : "基本料金（個人間のため応援金なし）"}</small>
+        </span>
+        <strong>{total.toLocaleString()}円</strong>
+      </div>
+
+      {/* 決済方法（通常ID宛のみ選択可・カスタムID宛はカードのみ） */}
+      {!isCustomId && (
+        <fieldset>
+          <legend>お支払い方法</legend>
+          <div className="payment-options">
+            <label>
+              <input
+                type="radio"
+                name="payment_method_choice"
+                value="paypay"
+                checked={method === "paypay"}
+                onChange={() => setMethod("paypay")}
+              />
+              <span className="pay-logo paypay">PayPay</span>
+              <small>PayPayで支払う</small>
+            </label>
+            <label>
+              <input
+                type="radio"
+                name="payment_method_choice"
+                value="card"
+                checked={method === "stripe"}
+                onChange={() => setMethod("stripe")}
+              />
+              <span className="pay-logo card">CARD</span>
+              <small>カードで支払う</small>
+            </label>
+          </div>
+        </fieldset>
       )}
 
-      {/* 決済ボタン */}
-      {isCustomId ? (
-        // カスタムID宛：Stripeのみ
-        <button
-          type="button"
-          disabled={!canSubmit}
-          onClick={() => submit("stripe")}
-          className="w-full bg-rose-700 text-white py-3 rounded-xl font-medium hover:bg-rose-800 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
-        >
-          {isPending ? "処理中..." : `Stripeで${customAmount.toLocaleString()}円を支払いに進む`}
-        </button>
-      ) : (
-        // 通常ID宛：PayPay または Stripe
-        <div className="grid grid-cols-2 gap-3">
-          <button
-            type="button"
-            disabled={!canSubmit}
-            onClick={() => submit("paypay")}
-            className="bg-[#00B900] text-white py-3 rounded-xl font-medium hover:bg-[#009900] transition-colors disabled:opacity-60 disabled:cursor-not-allowed text-sm"
-          >
-            {isPending ? "..." : "PayPayで支払う"}
-          </button>
-          <button
-            type="button"
-            disabled={!canSubmit}
-            onClick={() => submit("stripe")}
-            className="bg-[#635BFF] text-white py-3 rounded-xl font-medium hover:bg-[#4E47D0] transition-colors disabled:opacity-60 disabled:cursor-not-allowed text-sm"
-          >
-            {isPending ? "..." : "カードで支払う"}
-          </button>
-        </div>
-      )}
-
-      {!recipientFound && !fetching && fullId && RECIPIENT_ID_REGEX.test(fullId) && (
-        <p className="text-center text-xs text-stone-400">
-          有効なIDを入力すると決済ボタンが表示されます。
-        </p>
-      )}
-      {!idSuffix && (
-        <p className="text-center text-xs text-stone-400">
-          受取人IDを入力すると決済ボタンが表示されます。
-        </p>
-      )}
+      <button className="action-button" type="submit" disabled={!canSubmit}>
+        {isPending
+          ? "処理中..."
+          : !recipientFound
+            ? "IDを入力してください"
+            : `${total.toLocaleString()}円を支払いに進む`}
+      </button>
+      <p className="form-footnote">
+        {isCustomId
+          ? "カスタムID宛はカード決済（Stripe）でお支払いいただきます。"
+          : "PayPay または カードでお支払いいただけます。"}
+      </p>
     </form>
   );
 }

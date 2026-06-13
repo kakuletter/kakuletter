@@ -25,51 +25,34 @@ export default async function SendPage() {
   }
 
   return (
-    <div className="flex flex-col min-h-screen">
+    <div className="app-shell">
       <Header isLoggedIn={!!user} isAdmin={isAdmin} />
 
-      <main className="flex-1 max-w-md mx-auto w-full px-4 py-12">
-        <div className="text-center mb-8">
-          <h1 className="text-2xl font-bold text-stone-900 mb-2">手紙を送る</h1>
-          <p className="text-stone-500 text-sm leading-relaxed">
-            受取人のIDを入力し、PayPayで転送手数料を支払うと
-            封筒に貼るバーコードが発行されます。
-          </p>
-        </div>
+      <main className="app-main">
+        <section className="screen send-screen">
+          <div className="screen-heading centered">
+            <p className="eyebrow">SEND A LETTER</p>
+            <h1>手紙を送る</h1>
+            <p>受取人のIDを入力すると、封筒に貼るQRコードが発行されます。</p>
+          </div>
 
-        <div className="bg-white rounded-2xl border border-stone-200 p-6">
-          <SendForm />
-        </div>
+          <div className="flow-layout">
+            <SendForm />
 
-        <div className="mt-6 space-y-3 text-sm text-stone-500">
-          <p className="font-medium text-stone-700">手順</p>
-          <ol className="space-y-2 list-none">
-            {[
-              "受取人IDを入力してPayPayで310円を支払う",
-              "発行されたバーコードを印刷して封筒に貼る",
-              "運営の住所に手紙を郵送する",
-              "運営が受取人に転送する",
-            ].map((step, i) => (
-              <li key={i} className="flex gap-2.5">
-                <span className="shrink-0 w-5 h-5 bg-rose-100 text-rose-700 rounded-full flex items-center justify-center text-xs font-bold">
-                  {i + 1}
-                </span>
-                {step}
-              </li>
-            ))}
-          </ol>
-        </div>
-
-        <RecentLetters />
+            <aside className="steps-card">
+              <p className="eyebrow">HOW TO SEND</p>
+              <h2>送り方</h2>
+              <ol>
+                <li><span>1</span><p><strong>IDを入力して料金を支払う</strong><small>基本料金310円です。</small></p></li>
+                <li><span>2</span><p><strong>QRコードを印刷して封筒に貼る</strong><small>好きな便箋と封筒を使えます。</small></p></li>
+                <li><span>3</span><p><strong>運営の住所に手紙を郵送する</strong><small>宛先は発行画面に表示されます。</small></p></li>
+                <li><span>4</span><p><strong>運営が受取人へ転送する</strong><small>相手の住所は最後まで非公開です。</small></p></li>
+              </ol>
+              <RecentLetters />
+            </aside>
+          </div>
+        </section>
       </main>
-
-      <footer className="bg-stone-900 text-stone-400 text-center py-6 text-sm space-y-2">
-        <p>&copy; 2025 KAKULETTER</p>
-        <div className="flex justify-center gap-6">
-          <a href="/legal" className="hover:text-stone-200 underline">特定商取引法に基づく表示</a>
-          <a href="/privacy" className="hover:text-stone-200 underline">プライバシーポリシー</a>
-        </div>
-      </footer>
     </div>
   );
 }

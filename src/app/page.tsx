@@ -1,166 +1,195 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import Header from "@/components/Header";
+import RevealInit from "@/components/landing/RevealInit";
 
-export default async function LandingPage() {
+export const metadata = {
+  title: "KAKULETTER | 住所を知らなくても、手紙は届く。",
+  description:
+    "住所を相手に伝えず、KKL-IDだけで友達と本物の手紙を送り合えるKAKULETTERの文通サービスです。",
+};
+
+export default async function HomePage() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
 
   return (
-    <div className="flex flex-col min-h-screen">
+    <div className="friend-page">
+      <RevealInit />
+
       <Header isLoggedIn={!!user} />
 
-      {/* Hero */}
-      <section className="flex-1 flex flex-col items-center justify-center text-center px-4 py-24">
-        <p className="text-rose-700 text-sm font-medium tracking-widest mb-4 uppercase">
-          Anonymous Pen-Pal Service
-        </p>
-        <h1 className="text-4xl md:text-5xl font-bold text-stone-900 leading-tight mb-6">
-          あなたの想いを、<br />IDで届ける。
-        </h1>
-        <p className="text-stone-600 text-lg max-w-xl mb-10 leading-relaxed">
-          KAKULETTERは、住所を明かさずに文通できるサービスです。
-          IDを交換するだけで、実際の手紙を匿名で送り合えます。
-        </p>
-        <div className="flex gap-4 flex-wrap justify-center">
-          <Link
-            href="/send"
-            className="bg-rose-700 text-white px-8 py-3 rounded-full font-medium hover:bg-rose-800 transition-colors"
-          >
-            手紙を送る
-          </Link>
-          {user ? (
-            <Link
-              href="/dashboard"
-              className="border border-stone-300 text-stone-700 px-8 py-3 rounded-full font-medium hover:bg-stone-50 transition-colors"
-            >
-              マイページへ
-            </Link>
-          ) : (
-            <>
-              <Link
-                href="/auth/register"
-                className="border border-stone-300 text-stone-700 px-8 py-3 rounded-full font-medium hover:bg-stone-50 transition-colors"
-              >
-                無料登録（受取人はこちら）
+      <main id="top">
+        <section className="friend-landing-hero">
+          <div className="friend-paper-pattern" aria-hidden="true" />
+          <div className="container friend-hero-grid">
+            <div className="friend-hero-copy reveal is-visible">
+              <h1>思いが届く距離を<br /><span>もう一度近づける。</span></h1>
+              <p>
+                相手に住所を教えなくても、KKL-IDだけで手紙を届けられます。<br />
+                好きな便箋と封筒で、気軽に文通を始めましょう。
+              </p>
+              <div className="hero-actions">
+                <Link className="button button-large" href="/send">友達に手紙を送る</Link>
+                <Link className="button button-large button-outline" href="/auth/register">受取人になる</Link>
+              </div>
+              <p className="hero-note">基本料金は1通310円です。</p>
+            </div>
+
+            <div className="friend-hero-visual reveal is-visible">
+              <div className="friend-mail-scene friend-mail-scene-primary">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  className="friend-online-letter-image"
+                  src="/assets/hero-friends-manga-home.png"
+                  alt="自宅でビデオ通話をしながら手紙を書き、受け取った手紙を読む女友達を描いた漫画"
+                />
+              </div>
+              <div className="friend-mail-scene friend-mail-scene-secondary">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  className="friend-online-letter-image"
+                  src="/assets/hero-friends-manga-cafe-mailbox.png"
+                  alt="カフェで手紙を書く女性と、自宅の郵便受けで手紙を受け取る女友達を描いた漫画"
+                />
+              </div>
+              <div className="friend-visual-id">
+                <small>KKL-ID</small>
+                <strong>KKL-TOMO7</strong>
+              </div>
+              <div className="friend-visual-chip friend-visual-chip-private">住所は相手に非公開</div>
+              <div className="friend-online-letter-caption">本物の手紙が届く</div>
+            </div>
+          </div>
+        </section>
+
+        <section className="friend-choice-section">
+          <div className="container">
+            <div className="section-heading centered reveal">
+              <p className="section-kicker">選べる2つの入口</p>
+              <h2>あなたは、送りたい？<br />受け取りたい？</h2>
+              <p>送り手の会員登録は不要です。受け取りたい方だけ、無料でKKL-IDを作成します。</p>
+            </div>
+
+            <div className="friend-landing-choices">
+              <Link className="friend-landing-card friend-landing-send reveal" href="/send">
+                <span className="friend-card-number">01</span>
+                <span className="friend-card-icon" aria-hidden="true">
+                  <svg viewBox="0 0 48 48">
+                    <path d="M7 14h34v25H7z" />
+                    <path d="m8 16 16 13 16-13" />
+                    <path d="M31 9h10M36 4v10" />
+                  </svg>
+                </span>
+                <small>送りたい方</small>
+                <strong>友達に手紙を送る</strong>
+                <p>友達から教えてもらったKKL-IDを入力し、封筒に貼るQRコードを発行します。</p>
+                <em>会員登録不要・基本料金310円</em>
+                <b>送付画面へ進む →</b>
               </Link>
-              <a
-                href="#how-it-works"
-                className="border border-stone-300 text-stone-700 px-8 py-3 rounded-full font-medium hover:bg-stone-50 transition-colors"
-              >
-                使い方を見る
-              </a>
-            </>
-          )}
-        </div>
-      </section>
 
-      {/* How it works */}
-      <section id="how-it-works" className="bg-white py-20 px-4">
-        <div className="max-w-4xl mx-auto">
-          <h2 className="text-2xl font-bold text-center text-stone-900 mb-12">
-            3ステップで始められる
-          </h2>
-          <div className="grid md:grid-cols-3 gap-8">
-            {[
-              {
-                step: "01",
-                title: "登録してIDを取得",
-                desc: "氏名と住所を登録すると、あなた専用のIDが発行されます。このIDが文通の「住所」になります。",
-              },
-              {
-                step: "02",
-                title: "IDを交換する",
-                desc: "文通したい相手とIDを交換します。SNSや直接会った際に教え合いましょう。",
-              },
-              {
-                step: "03",
-                title: "QRコードを貼って郵送",
-                desc: "相手のIDを入力してPayPayで310円を支払うとQRコードが発行されます。封筒に貼って運営へ郵送すると、運営が相手の住所へ転送します。",
-              },
-            ].map(({ step, title, desc }) => (
-              <div key={step} className="text-center">
-                <div className="w-12 h-12 bg-rose-50 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <span className="text-rose-700 font-bold text-sm">{step}</span>
-                </div>
-                <h3 className="font-semibold text-stone-900 mb-2">{title}</h3>
-                <p className="text-stone-500 text-sm leading-relaxed">{desc}</p>
-              </div>
-            ))}
+              <Link className="friend-landing-card friend-landing-receive reveal" href="/auth/register">
+                <span className="friend-card-number">02</span>
+                <span className="friend-card-icon" aria-hidden="true">
+                  <svg viewBox="0 0 48 48">
+                    <circle cx="24" cy="15" r="7" />
+                    <path d="M10 40c1-10 6-16 14-16s13 6 14 16" />
+                    <path d="M35 8v12M29 14h12" />
+                  </svg>
+                </span>
+                <small>受け取りたい方</small>
+                <strong>手紙の受取人になる</strong>
+                <p>住所を相手へ公開せずに手紙を受け取れる、あなた専用のKKL-IDを作ります。</p>
+                <em>受取人登録は無料</em>
+                <b>IDを作成する →</b>
+              </Link>
+            </div>
+          </div>
+        </section>
+
+        <section className="friend-how-section">
+          <div className="container">
+            <div className="section-heading centered reveal">
+              <p className="section-kicker">使い方</p>
+              <h2>住所を交換しない、文通の始め方。</h2>
+            </div>
+            <div className="friend-how-grid">
+              <article className="friend-how-card reveal">
+                <span>1</span>
+                <h3>受取人がIDを作る</h3>
+                <p>無料登録で専用のKKL-IDを取得し、手紙を送ってほしい友達に伝えます。</p>
+              </article>
+              <article className="friend-how-card reveal">
+                <span>2</span>
+                <h3>送り手がQRを発行</h3>
+                <p>友達のIDを入力して基本料金310円を支払い、転送用QRコードを発行します。</p>
+              </article>
+              <article className="friend-how-card reveal">
+                <span>3</span>
+                <h3>封筒に貼って郵送</h3>
+                <p>QRコードを封筒に貼ってKAKULETTERへ郵送すると、運営が相手の住所へ転送します。</p>
+              </article>
+            </div>
+          </div>
+        </section>
+
+        <section className="friend-safety-section">
+          <div className="container friend-safety-inner reveal">
+            <div>
+              <p className="section-kicker">安心の仕組み</p>
+              <h2>住所は、お互いに見えません。</h2>
+              <p>登録住所は手紙の転送にのみ使用します。封筒に相手の住所を書く必要もありません。</p>
+            </div>
+            <div className="friend-safety-points">
+              <span>住所は相手に非公開</span>
+              <span>運営が受取人へ転送</span>
+              <span>KKL-IDだけで送れる</span>
+            </div>
+          </div>
+        </section>
+
+        <section className="final-cta friend-final-cta">
+          <div className="cta-pattern" aria-hidden="true">LETTER LETTER LETTER</div>
+          <div className="container cta-inner reveal">
+            <div>
+              <h2>手紙のやりとりを、<br />今日から始めよう。</h2>
+            </div>
+            <div className="friend-final-actions">
+              <Link className="button button-white button-large" href="/send">手紙を送る</Link>
+              <Link className="friend-white-link" href="/auth/register">受取人になる →</Link>
+            </div>
+          </div>
+        </section>
+      </main>
+
+      <footer className="site-footer">
+        <div className="container footer-top">
+          <Link className="brand footer-brand" href="/">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img className="brand-logo" src="/logo.svg" alt="" />
+            <span className="brand-name">KAKULETTER</span>
+          </Link>
+          <div className="footer-links">
+            <div>
+              <strong>メニュー</strong>
+              <Link href="#top">ページ上部</Link>
+              <Link href="/send">手紙を送る</Link>
+              <Link href="/auth/register">受取人になる</Link>
+            </div>
+            <div>
+              <strong>配信者への応援</strong>
+              <Link href="/creator">配信者・推し活向けトップ</Link>
+            </div>
+            <div>
+              <strong>サポート</strong>
+              <Link href="/creator#faq">よくある質問</Link>
+              <Link href="/legal">特定商取引法に基づく表記</Link>
+            </div>
           </div>
         </div>
-      </section>
-
-      {/* Features */}
-      <section className="py-20 px-4">
-        <div className="max-w-4xl mx-auto">
-          <h2 className="text-2xl font-bold text-center text-stone-900 mb-12">
-            KAKULETTERの特徴
-          </h2>
-          <div className="grid md:grid-cols-3 gap-6">
-            {[
-              {
-                icon: "🔒",
-                title: "完全匿名",
-                desc: "相手に実際の住所が伝わることはありません。IDだけで文通できます。",
-              },
-              {
-                icon: "✉️",
-                title: "本物の手紙",
-                desc: "デジタルではなく、実際の紙の手紙でやりとりします。温かみのある体験を。",
-              },
-              {
-                icon: "🛡️",
-                title: "安心・安全",
-                desc: "運営が中継するため、個人情報が相手に漏れる心配がありません。",
-              },
-            ].map(({ icon, title, desc }) => (
-              <div key={title} className="bg-white rounded-2xl p-6 border border-stone-200">
-                <div className="text-2xl mb-3">{icon}</div>
-                <h3 className="font-semibold text-stone-900 mb-2">{title}</h3>
-                <p className="text-stone-500 text-sm leading-relaxed">{desc}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* CTA */}
-      <section className="bg-rose-700 py-16 px-4 text-center">
-        <h2 className="text-2xl font-bold text-white mb-4">
-          さっそく手紙を送ってみませんか？
-        </h2>
-        <p className="text-rose-100 mb-8">
-          登録不要。相手のIDを入力してPayPayで310円を支払うだけ。
-        </p>
-        <div className="flex gap-4 justify-center flex-wrap">
-          <Link
-            href="/send"
-            className="bg-white text-rose-700 px-8 py-3 rounded-full font-medium hover:bg-rose-50 transition-colors"
-          >
-            手紙を送る
-          </Link>
-          {!user && (
-            <Link
-              href="/auth/register"
-              className="border border-white text-white px-8 py-3 rounded-full font-medium hover:bg-rose-800 transition-colors"
-            >
-              受取人として登録する
-            </Link>
-          )}
-        </div>
-      </section>
-
-      {/* Footer */}
-      <footer className="bg-stone-900 text-stone-400 text-center py-6 text-sm space-y-2">
-        <p>&copy; 2025 KAKULETTER</p>
-        <div className="flex justify-center gap-6">
-          <Link href="/legal" className="hover:text-stone-200 underline">
-            特定商取引法に基づく表示
-          </Link>
-          <Link href="/privacy" className="hover:text-stone-200 underline">
-            プライバシーポリシー
-          </Link>
+        <div className="container footer-bottom">
+          <p>住所を知らなくても、本物の手紙は届けられる。</p>
+          <small>&copy; 2026 KAKULETTER</small>
         </div>
       </footer>
     </div>

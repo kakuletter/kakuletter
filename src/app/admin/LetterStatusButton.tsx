@@ -23,31 +23,19 @@ export default function LetterStatusButton({ letterId, currentStatus }: Props) {
   if (currentStatus === "delivered") return null;
 
   return (
-    <div className="flex gap-2">
+    <div style={{ display: "flex", gap: 8 }}>
       {currentStatus === "payment_pending" && (
-        <button
-          onClick={() => handleUpdate("received")}
-          disabled={loading}
-          className="text-xs bg-yellow-100 text-yellow-800 px-3 py-1 rounded-full hover:bg-yellow-200 disabled:opacity-60"
-        >
+        <button type="button" className="status-action" onClick={() => handleUpdate("received")} disabled={loading}>
           受付済みにする
         </button>
       )}
       {currentStatus === "received" && (
-        <button
-          onClick={() => handleUpdate("forwarded")}
-          disabled={loading}
-          className="text-xs bg-blue-100 text-blue-800 px-3 py-1 rounded-full hover:bg-blue-200 disabled:opacity-60"
-        >
+        <button type="button" className="status-action" onClick={() => handleUpdate("forwarded")} disabled={loading}>
           転送済みにする
         </button>
       )}
       {currentStatus === "forwarded" && (
-        <button
-          onClick={() => handleUpdate("delivered")}
-          disabled={loading}
-          className="text-xs bg-green-100 text-green-800 px-3 py-1 rounded-full hover:bg-green-200 disabled:opacity-60"
-        >
+        <button type="button" className="status-action" onClick={() => handleUpdate("delivered")} disabled={loading}>
           配達完了にする
         </button>
       )}

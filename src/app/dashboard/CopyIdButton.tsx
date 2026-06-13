@@ -12,10 +12,7 @@ export default function CopyIdButton({ id }: { id: string }) {
   }
 
   return (
-    <button
-      onClick={handleCopy}
-      className="text-sm border border-stone-300 rounded-full px-4 py-1.5 text-stone-600 hover:bg-stone-50 transition-colors"
-    >
+    <button type="button" onClick={handleCopy}>
       {copied ? "コピーしました！" : "IDをコピー"}
     </button>
   );

@@ -83,34 +83,26 @@ export default function PaymentChecker({ letterId, paymentMethod, stripeReturn }
   if (paymentMethod === "stripe") {
     const showButton = !stripeReturn || pollingDone;
     return (
-      <div className="space-y-3 text-center">
+      <div style={{ display: "grid", gap: 10, justifyItems: "center" }}>
         {stripeReturn && !pollingDone && (
-          <p className="text-sm text-stone-500">支払いを確認中...</p>
+          <p style={{ margin: 0, color: "var(--muted)", fontSize: 13 }}>支払いを確認中...</p>
         )}
         {showButton && (
-          <button
-            onClick={handleStripeCheck}
-            disabled={loading}
-            className="bg-stone-800 text-white px-6 py-2.5 rounded-full text-sm font-medium hover:bg-stone-900 disabled:opacity-60"
-          >
+          <button type="button" className="outline-button is-compact" onClick={handleStripeCheck} disabled={loading}>
             {loading ? "確認中..." : "支払いを確認する"}
           </button>
         )}
-        {message && <p className="text-sm text-stone-500">{message}</p>}
+        {message && <p style={{ margin: 0, color: "var(--muted)", fontSize: 12 }}>{message}</p>}
       </div>
     );
   }
 
   return (
-    <div className="space-y-3 text-center">
-      <button
-        onClick={handlePayPayCheck}
-        disabled={loading}
-        className="bg-stone-800 text-white px-6 py-2.5 rounded-full text-sm font-medium hover:bg-stone-900 disabled:opacity-60"
-      >
+    <div style={{ display: "grid", gap: 10, justifyItems: "center" }}>
+      <button type="button" className="outline-button is-compact" onClick={handlePayPayCheck} disabled={loading}>
         {loading ? "確認中..." : "支払いを確認する"}
       </button>
-      {message && <p className="text-sm text-stone-500">{message}</p>}
+      {message && <p style={{ margin: 0, color: "var(--muted)", fontSize: 12 }}>{message}</p>}
     </div>
   );
 }

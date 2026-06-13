@@ -37,3 +37,7 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# design import working files (not part of the app)
+/_gigafile_tmp/
+/gigafile-*.zip

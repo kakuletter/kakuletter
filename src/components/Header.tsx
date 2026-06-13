@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 
 type Props = {
@@ -11,6 +11,7 @@ type Props = {
 
 export default function Header({ isLoggedIn, isAdmin }: Props) {
   const router = useRouter();
+  const pathname = usePathname();
   const supabase = createClient();
 
   async function handleLogout() {
@@ -19,50 +20,34 @@ export default function Header({ isLoggedIn, isAdmin }: Props) {
     router.refresh();
   }
 
+  // 現在のページかどうか
+  const current = (href: string) =>
+    pathname === href ? ("page" as const) : undefined;
+
   return (
-    <header className="border-b border-stone-200 bg-white">
-      <div className="max-w-5xl mx-auto px-4 h-14 flex items-center justify-between">
-        <Link href="/" className="flex items-center gap-1.5 shrink-0">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/logo.svg" alt="KKL" className="object-contain w-10 h-10 sm:w-12 sm:h-12" />
-          <span className="font-bold text-sm sm:text-xl tracking-widest text-rose-700">KAKULETTER</span>
-        </Link>
-        <nav className="flex items-center gap-2 sm:gap-4 text-xs sm:text-sm">
-          <Link
-            href="/send"
-            className="bg-rose-700 text-white px-3 sm:px-4 py-1.5 rounded-full hover:bg-rose-800 transition-colors whitespace-nowrap"
-          >
-            手紙を送る
-          </Link>
-          {isLoggedIn ? (
-            <>
-              <Link href="/dashboard" className="text-stone-600 hover:text-stone-900 whitespace-nowrap">
-                マイページ
-              </Link>
-              {isAdmin && (
-                <Link href="/admin" className="text-stone-600 hover:text-stone-900">
-                  管理
-                </Link>
-              )}
-              <button
-                onClick={handleLogout}
-                className="text-stone-500 hover:text-stone-700 hidden sm:block whitespace-nowrap"
-              >
-                ログアウト
-              </button>
-            </>
-          ) : (
-            <>
-              <Link href="/auth/login" className="text-stone-600 hover:text-stone-900 whitespace-nowrap">
-                ログイン
-              </Link>
-              <Link href="/auth/register" className="text-stone-600 hover:text-stone-900 whitespace-nowrap hidden sm:block">
-                新規登録
-              </Link>
-            </>
-          )}
-        </nav>
-      </div>
+    <header className="app-header">
+      <Link className="brand" href="/" aria-label="KAKULETTER ホーム">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img className="brand-logo" src="/logo.svg" alt="" />
+        <strong className="brand-name">KAKULETTER</strong>
+      </Link>
+      <nav>
+        <Link href="/" aria-current={current("/")}>友達向けトップ</Link>
+        <Link href="/creator" aria-current={current("/creator")}>配信者向けトップ</Link>
+        {isLoggedIn ? (
+          <>
+            <Link href="/dashboard" aria-current={current("/dashboard")}>マイページ</Link>
+            {isAdmin && <Link href="/admin" aria-current={current("/admin")}>管理</Link>}
+            <button type="button" onClick={handleLogout}>ログアウト</button>
+          </>
+        ) : (
+          <>
+            <Link href="/auth/login" aria-current={current("/auth/login")}>ログイン</Link>
+            <Link href="/auth/register" aria-current={current("/auth/register")}>新規登録</Link>
+          </>
+        )}
+        <Link className="primary-link" href="/send" aria-current={current("/send")}>手紙を送る</Link>
+      </nav>
     </header>
   );
 }
