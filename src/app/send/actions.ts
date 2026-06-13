@@ -3,7 +3,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createQRPayment } from "@/lib/paypay";
-import { stripe, DEFAULT_LETTER_FEE, FREE_TIER_MONTHLY_LIMIT, calculateSplit, isConnectAccountReady } from "@/lib/stripe";
+import { stripe, DEFAULT_LETTER_FEE, calculateSplit, isConnectAccountReady } from "@/lib/stripe";
 import { RECIPIENT_ID_REGEX } from "@/lib/utils";
 import type { ActionState } from "@/types";
 
@@ -30,28 +30,10 @@ export async function createLetterPayment(
     return { error: `ID「${rawId}」は登録されていません。` };
   }
   const { recipient, isCustomId } = lookupResult;
-  const isPremium = recipient.subscription_status === "premium";
 
   // カスタムID宛はStripeのみ
   if (isCustomId && paymentMethod !== "stripe") {
     return { error: "カスタムIDへの送信にはStripe決済をご利用ください。" };
-  }
-
-  // 無料会員の月間受取上限チェック
-  if (!isPremium) {
-    const startOfMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString();
-    const { count } = await adminClient
-      .from("letters")
-      .select("id", { count: "exact", head: true })
-      .eq("recipient_display_id", recipient.display_id)
-      .neq("status", "payment_pending")
-      .gte("received_at", startOfMonth);
-
-    if ((count ?? 0) >= FREE_TIER_MONTHLY_LIMIT) {
-      return {
-        error: "この受取人は今月の受取上限（10通）に達しています。来月以降に再度お試しください。",
-      };
-    }
   }
 
   // ログイン中の場合：自分自身への送信チェック＋送信者情報取得
@@ -210,7 +192,6 @@ type RecipientRow = {
   id: string;
   display_id: string;
   custom_id: string | null;
-  subscription_status: string;
   stripe_connect_account_id: string | null;
 };
 
@@ -218,7 +199,7 @@ async function lookupRecipient(
   adminClient: ReturnType<typeof createAdminClient>,
   rawId: string
 ): Promise<{ recipient: RecipientRow; isCustomId: boolean } | null> {
-  const columns = "id, display_id, custom_id, subscription_status, stripe_connect_account_id";
+  const columns = "id, display_id, custom_id, stripe_connect_account_id";
 
   const { data: byDisplayId } = await adminClient
     .from("users")

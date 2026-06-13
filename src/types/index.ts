@@ -11,10 +11,7 @@ export type UserProfile = {
   email: string;
   is_admin: boolean;
   created_at: string;
-  // サブスク
-  subscription_status: "free" | "premium";
-  stripe_customer_id: string | null;
-  stripe_subscription_id: string | null;
+  // カスタムID・収益受取
   stripe_connect_account_id: string | null;
   custom_id: string | null;
 };

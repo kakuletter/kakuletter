@@ -8,7 +8,7 @@ type Props = {
   connectStatus: "none" | "pending" | "active";
 };
 
-export default function PremiumSettings({ customId, connectStatus }: Props) {
+export default function AccountSettings({ customId, connectStatus }: Props) {
   const [idState, idAction, idPending] = useActionState(updateCustomId, {});
   const [connecting, setConnecting] = useState(false);
   const [connectError, setConnectError] = useState("");

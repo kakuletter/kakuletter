@@ -20,62 +20,19 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Invalid signature" }, { status: 400 });
   }
 
-  const adminClient = createAdminClient();
-
-  switch (event.type) {
-    case "checkout.session.completed": {
-      const session = event.data.object as Stripe.Checkout.Session;
-
-      // 手紙決済
-      if (session.metadata?.type === "letter" && session.mode === "payment") {
-        const letterId = session.metadata.letter_id;
-        if (letterId) {
-          await adminClient
-            .from("letters")
-            .update({ status: "received", received_at: new Date().toISOString() })
-            .eq("id", letterId)
-            .eq("status", "payment_pending");
-        }
-        break;
+  // 手紙決済の完了を処理（カスタムID宛は連結アカウント上の direct charge イベントとして届く）
+  if (event.type === "checkout.session.completed") {
+    const session = event.data.object as Stripe.Checkout.Session;
+    if (session.metadata?.type === "letter" && session.mode === "payment") {
+      const letterId = session.metadata.letter_id;
+      if (letterId) {
+        const adminClient = createAdminClient();
+        await adminClient
+          .from("letters")
+          .update({ status: "received", received_at: new Date().toISOString() })
+          .eq("id", letterId)
+          .eq("status", "payment_pending");
       }
-
-      // サブスク決済
-      const authId = session.metadata?.auth_id;
-      if (!authId || session.mode !== "subscription") break;
-
-      const subscriptionId = session.subscription as string;
-      await adminClient
-        .from("users")
-        .update({
-          subscription_status: "premium",
-          stripe_subscription_id: subscriptionId,
-        })
-        .eq("auth_id", authId);
-      break;
-    }
-
-    case "invoice.paid": {
-      const invoice = event.data.object as Stripe.Invoice & { subscription?: string };
-      if (!invoice.subscription) break;
-
-      await adminClient
-        .from("users")
-        .update({ subscription_status: "premium" })
-        .eq("stripe_subscription_id", invoice.subscription);
-      break;
-    }
-
-    case "customer.subscription.deleted":
-    case "customer.subscription.paused": {
-      const subscription = event.data.object as Stripe.Subscription;
-      await adminClient
-        .from("users")
-        .update({
-          subscription_status: "free",
-          stripe_subscription_id: null,
-        })
-        .eq("stripe_subscription_id", subscription.id);
-      break;
     }
   }
 

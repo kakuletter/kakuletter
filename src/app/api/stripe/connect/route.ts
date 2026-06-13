@@ -14,16 +14,12 @@ export async function POST() {
   const adminClient = createAdminClient();
   const { data: profile } = await adminClient
     .from("users")
-    .select("subscription_status, email, stripe_connect_account_id")
+    .select("email, stripe_connect_account_id")
     .eq("auth_id", user.id)
-    .single<{ subscription_status: string; email: string; stripe_connect_account_id: string | null }>();
+    .single<{ email: string; stripe_connect_account_id: string | null }>();
 
   if (!profile) {
     return NextResponse.json({ error: "プロフィールが見つかりません" }, { status: 404 });
-  }
-
-  if (profile.subscription_status !== "premium") {
-    return NextResponse.json({ error: "プレミアム会員のみ口座を連携できます" }, { status: 403 });
   }
 
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";

@@ -4,11 +4,8 @@ export const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: "2026-05-27.dahlia",
 });
 
-export const SUBSCRIPTION_PRICE_ID = process.env.STRIPE_PRICE_ID!;
-export const SUBSCRIPTION_FEE_MONTHLY = 980; // 円/月
 export const PAYOUT_RATE = 0.8; // 受取人への還元率
 export const DEFAULT_LETTER_FEE = 310;
-export const FREE_TIER_MONTHLY_LIMIT = 10;
 
 // カスタムID宛の手数料を運営と受取人で分配する。
 // 運営: 310円(固定) + 超過分の20%、受取人: 残り（= 超過分の80%）

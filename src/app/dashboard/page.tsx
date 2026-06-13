@@ -4,7 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import Header from "@/components/Header";
 import CopyIdButton from "./CopyIdButton";
-import PremiumSettings from "./PremiumSettings";
+import AccountSettings from "./AccountSettings";
 import { statusLabel, statusColor } from "@/lib/utils";
 import { isConnectAccountReady } from "@/lib/stripe";
 import type { UserProfile, Letter } from "@/types";
@@ -16,7 +16,7 @@ export const metadata = {
 export default async function DashboardPage({
   searchParams,
 }: {
-  searchParams: Promise<{ subscription?: string; connect?: string }>;
+  searchParams: Promise<{ connect?: string }>;
 }) {
   const params = await searchParams;
   const supabase = await createClient();
@@ -50,37 +50,24 @@ export default async function DashboardPage({
     .order("created_at", { ascending: false }) as { data: Letter[] | null };
 
   const serviceAddress = process.env.NEXT_PUBLIC_SERVICE_ADDRESS ?? "（運営事務局住所）";
-  const isPremium = profile.subscription_status === "premium";
 
-  // 今月の収益集計（プレミアム会員のみ）
+  // 収益集計（カスタムID宛の手紙のみ payout_amount を持つ）
   let monthlyEarnings = 0;
-  let pendingPayout = 0;
-  if (isPremium) {
-    const startOfMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString();
-    const { data: monthlyLetters } = await adminClient
-      .from("letters")
-      .select("payout_amount, payout_status")
-      .eq("recipient_display_id", profile.display_id)
-      .neq("status", "payment_pending")
-      .gte("received_at", startOfMonth) as { data: { payout_amount: number | null; payout_status: string }[] | null };
-
-    monthlyEarnings = (monthlyLetters ?? []).reduce((sum, l) => sum + (l.payout_amount ?? 0), 0);
-
-    const { data: pending } = await adminClient
-      .from("letters")
-      .select("payout_amount")
-      .eq("recipient_display_id", profile.display_id)
-      .eq("payout_status", "pending")
-      .neq("status", "payment_pending") as { data: { payout_amount: number | null }[] | null };
-
-    pendingPayout = (pending ?? []).reduce((sum, l) => sum + (l.payout_amount ?? 0), 0);
+  let totalEarnings = 0;
+  if (profile.custom_id) {
+    const startOfMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
+    for (const l of receivedLetters ?? []) {
+      const amount = l.payout_amount ?? 0;
+      totalEarnings += amount;
+      if (new Date(l.received_at) >= startOfMonth) monthlyEarnings += amount;
+    }
   }
 
-  const displayedId = isPremium && profile.custom_id ? profile.custom_id : profile.display_id;
+  const displayedId = profile.custom_id ?? profile.display_id;
 
   // Stripe Connect（収益の振込先）連携状態
   let connectStatus: "none" | "pending" | "active" = "none";
-  if (isPremium && profile.stripe_connect_account_id) {
+  if (profile.stripe_connect_account_id) {
     connectStatus = (await isConnectAccountReady(profile.stripe_connect_account_id)) ? "active" : "pending";
   }
 
@@ -89,13 +76,6 @@ export default async function DashboardPage({
       <Header isLoggedIn={true} isAdmin={profile.is_admin} />
 
       <main className="flex-1 max-w-3xl mx-auto w-full px-4 py-10 space-y-8">
-
-        {/* 登録成功バナー */}
-        {params.subscription === "success" && (
-          <div className="bg-green-50 border border-green-200 rounded-xl p-4 text-sm text-green-800 text-center">
-            🎉 プレミアムプランへの登録が完了しました！カスタムIDを設定してください。
-          </div>
-        )}
 
         {/* Connect連携バナー */}
         {params.connect === "return" && (
@@ -108,26 +88,14 @@ export default async function DashboardPage({
 
         {/* ID カード */}
         <section className="bg-white rounded-2xl border border-stone-200 p-6 md:p-8">
-          <div className="flex items-start justify-between flex-wrap gap-3 mb-2">
-            <p className="text-sm text-stone-500">あなたのKAKULETTER ID</p>
-            {isPremium ? (
-              <span className="text-xs font-bold bg-rose-700 text-white px-2.5 py-1 rounded-full">PREMIUM</span>
-            ) : (
-              <Link
-                href="/subscribe"
-                className="text-xs text-rose-600 underline hover:text-rose-800"
-              >
-                プレミアムにアップグレード →
-              </Link>
-            )}
-          </div>
+          <p className="text-sm text-stone-500 mb-2">あなたのKAKULETTER ID</p>
           <div className="flex items-center gap-4 flex-wrap">
             <span className="text-4xl font-bold tracking-widest text-rose-700 font-mono">
               {displayedId}
             </span>
             <CopyIdButton id={displayedId} />
           </div>
-          {isPremium && profile.custom_id && (
+          {profile.custom_id && (
             <p className="text-xs text-stone-400 mt-1">
               自動ID（{profile.display_id}）でも受け取れます
             </p>
@@ -137,8 +105,8 @@ export default async function DashboardPage({
           </p>
         </section>
 
-        {/* プレミアム収益 */}
-        {isPremium && (
+        {/* 収益（カスタムID設定者のみ） */}
+        {profile.custom_id && (
           <section className="bg-amber-50 rounded-2xl border border-amber-100 p-6">
             <h2 className="font-semibold text-stone-900 mb-4">収益状況</h2>
             <div className="grid grid-cols-2 gap-4">
@@ -147,8 +115,8 @@ export default async function DashboardPage({
                 <p className="text-2xl font-bold text-stone-900">¥{monthlyEarnings.toLocaleString()}</p>
               </div>
               <div className="bg-white rounded-xl p-4 border border-amber-100 text-center">
-                <p className="text-xs text-stone-400 mb-1">精算待ち（累計）</p>
-                <p className="text-2xl font-bold text-rose-700">¥{pendingPayout.toLocaleString()}</p>
+                <p className="text-xs text-stone-400 mb-1">累計収益</p>
+                <p className="text-2xl font-bold text-rose-700">¥{totalEarnings.toLocaleString()}</p>
               </div>
             </div>
             <p className="text-xs text-stone-400 mt-3">
@@ -157,13 +125,11 @@ export default async function DashboardPage({
           </section>
         )}
 
-        {/* プレミアム設定 */}
-        {isPremium && (
-          <section className="bg-white rounded-2xl border border-stone-200 p-6 md:p-8">
-            <h2 className="font-semibold text-stone-900 mb-5">プレミアム設定</h2>
-            <PremiumSettings customId={profile.custom_id} connectStatus={connectStatus} />
-          </section>
-        )}
+        {/* 設定（カスタムID・受取口座） */}
+        <section className="bg-white rounded-2xl border border-stone-200 p-6 md:p-8">
+          <h2 className="font-semibold text-stone-900 mb-5">設定</h2>
+          <AccountSettings customId={profile.custom_id} connectStatus={connectStatus} />
+        </section>
 
         {/* 手紙の送り方 */}
         <section className="bg-rose-50 rounded-2xl border border-rose-100 p-6">
@@ -234,18 +200,7 @@ export default async function DashboardPage({
 
         {/* 受け取った手紙 */}
         <section>
-          <h2 className="font-semibold text-stone-900 mb-4">
-            受け取った手紙
-            {!isPremium && receivedLetters && (
-              <span className="ml-2 text-xs font-normal text-stone-400">
-                今月 {receivedLetters.filter(l => {
-                  const d = new Date(l.received_at);
-                  const now = new Date();
-                  return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
-                }).length} / 10通
-              </span>
-            )}
-          </h2>
+          <h2 className="font-semibold text-stone-900 mb-4">受け取った手紙</h2>
           {!receivedLetters || receivedLetters.length === 0 ? (
             <div className="bg-white rounded-2xl border border-stone-200 p-8 text-center text-stone-400 text-sm">
               まだ手紙は届いていません
@@ -266,12 +221,12 @@ export default async function DashboardPage({
                         転送日：{new Date(letter.forwarded_at).toLocaleDateString("ja-JP")}
                       </p>
                     )}
-                    {isPremium && letter.payout_amount && (
+                    {letter.payout_amount ? (
                       <p className="text-xs text-amber-600 mt-0.5">
                         収益：¥{letter.payout_amount.toLocaleString()}
-                        {letter.payout_status === "paid" && " （精算済み）"}
+                        {letter.payout_status === "paid" && " （振込済み）"}
                       </p>
-                    )}
+                    ) : null}
                   </div>
                   <span className={`text-xs font-medium px-3 py-1 rounded-full ${statusColor(letter.status)}`}>
                     {statusLabel(letter.status)}

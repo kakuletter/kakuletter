@@ -14,8 +14,6 @@ const QUICK_AMOUNTS = [500, 1000, 3000, 5000, 10000, 30000];
 type RecipientInfo = {
   exists: boolean;
   fee: number;
-  monthlyLimitReached: boolean;
-  isPremium: boolean;
   isCustomId: boolean;
 } | null;
 
@@ -78,9 +76,8 @@ export default function SendForm() {
   }
 
   const isCustomId = recipientInfo?.isCustomId ?? false;
-  const isLimitReached = recipientInfo?.monthlyLimitReached ?? false;
   const recipientFound = recipientInfo?.exists;
-  const canSubmit = !isPending && !state?.success && !isLimitReached && recipientFound;
+  const canSubmit = !isPending && !state?.success && recipientFound;
 
   return (
     <form ref={formRef} action={formAction} className="space-y-5">
@@ -184,12 +181,6 @@ export default function SendForm() {
       {recipientFound && !isCustomId && (
         <div className="bg-rose-50 border border-rose-100 rounded-xl px-4 py-3 text-sm text-rose-800">
           転送手数料：<strong>310円</strong>（固定）
-        </div>
-      )}
-
-      {isLimitReached && (
-        <div className="bg-stone-50 border border-stone-200 rounded-xl px-4 py-3 text-sm text-stone-500 text-center">
-          この受取人は今月の受取上限（10通）に達しています。
         </div>
       )}
 

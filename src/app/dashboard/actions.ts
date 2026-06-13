@@ -16,15 +16,6 @@ export async function updateCustomId(
   if (!user) redirect("/auth/login");
 
   const adminClient = createAdminClient();
-  const { data: profile } = await adminClient
-    .from("users")
-    .select("subscription_status")
-    .eq("auth_id", user.id)
-    .single<{ subscription_status: string }>();
-
-  if (profile?.subscription_status !== "premium") {
-    return { error: "プレミアム会員のみカスタムIDを設定できます。" };
-  }
 
   const rawInput = (formData.get("custom_id") as string)?.trim() ?? "";
   // プレフィックスを除いた部分だけ小文字化して再結合
