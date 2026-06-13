@@ -147,6 +147,19 @@ ALTER TABLE public.letters ADD COLUMN IF NOT EXISTS payment_method TEXT NOT NULL
 ALTER TABLE public.letters ADD COLUMN IF NOT EXISTS stripe_session_id TEXT;
 
 -- ==============================================
+-- マイグレーション：Stripe Connect（受取人への自動分配）対応 (v5)
+-- Supabase の SQL Editor で実行してください
+-- ==============================================
+
+-- 受取人（プレミアム会員）の Stripe Connect 連結アカウントID。
+-- 連携済みの場合、カスタムID宛の決済で手数料の80%が自動送金される。
+ALTER TABLE public.users ADD COLUMN IF NOT EXISTS stripe_connect_account_id TEXT;
+
+-- 手紙の決済が direct charge で作成された連結アカウントID。
+-- 支払い状態の再確認（letter-check）時に、この連結アカウント上のセッションを参照する。
+ALTER TABLE public.letters ADD COLUMN IF NOT EXISTS stripe_connect_account_id TEXT;
+
+-- ==============================================
 -- 最初の管理者を設定する方法
 -- ==============================================
 -- 1. ユーザーを通常登録する

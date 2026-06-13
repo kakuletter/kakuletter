@@ -3,7 +3,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createQRPayment } from "@/lib/paypay";
-import { stripe, DEFAULT_LETTER_FEE, FREE_TIER_MONTHLY_LIMIT, PAYOUT_RATE } from "@/lib/stripe";
+import { stripe, DEFAULT_LETTER_FEE, FREE_TIER_MONTHLY_LIMIT, calculateSplit, isConnectAccountReady } from "@/lib/stripe";
 import { RECIPIENT_ID_REGEX } from "@/lib/utils";
 import type { ActionState } from "@/types";
 
@@ -86,7 +86,25 @@ export async function createLetterPayment(
     fee = DEFAULT_LETTER_FEE;
   }
 
-  const payoutAmount = isCustomId ? Math.floor((fee - DEFAULT_LETTER_FEE) * PAYOUT_RATE) : null;
+  // カスタムID宛の分配額を算出。
+  let payoutAmount: number | null = null;
+  let operatorCut = fee;
+  if (isCustomId) {
+    const split = calculateSplit(fee);
+    payoutAmount = split.payoutAmount;
+    operatorCut = split.operatorCut;
+
+    // direct charge は受取人の連結アカウント上で決済するため、口座連携が必須。
+    // 連携前は送信をブロックする（運営が資金を一切保有しない＝資金移動業を回避）。
+    const ready =
+      !!recipient.stripe_connect_account_id &&
+      (await isConnectAccountReady(recipient.stripe_connect_account_id));
+    if (!ready) {
+      return {
+        error: "この受取人はまだ受取口座の連携が完了していないため、送信できません。受取人に口座連携を依頼してください。",
+      };
+    }
+  }
 
   // 手紙レコード作成
   const { data: letter, error: insertError } = await adminClient
@@ -98,7 +116,8 @@ export async function createLetterPayment(
       status: "payment_pending",
       fee_amount: fee,
       payout_amount: payoutAmount,
-      payout_status: isCustomId ? "pending" : "none",
+      // direct charge では受取人へ直接着金するため、決済完了＝精算済み扱い
+      payout_status: isCustomId ? "paid" : "none",
       payment_method: paymentMethod,
     })
     .select("id")
@@ -112,32 +131,47 @@ export async function createLetterPayment(
 
   if (paymentMethod === "stripe") {
     try {
-      const session = await stripe.checkout.sessions.create({
-        mode: "payment",
-        line_items: [
-          {
-            price_data: {
-              currency: "jpy",
-              product_data: {
-                name: "KAKULETTER 転送手数料",
-                description: `受取人ID: ${recipient.display_id}`,
+      // カスタムID宛は direct charge：受取人の連結アカウント上で決済を作成し、
+      // 運営の取り分だけを application_fee_amount として受け取る。
+      // 顧客の支払いは受取人へ直接着金し、運営は資金を保有しない（資金移動業を回避）。
+      // 通常ID宛（310円）は運営自身のサービス手数料なので、運営アカウントで決済する。
+      const connectAccountId = isCustomId ? recipient.stripe_connect_account_id : null;
+
+      const session = await stripe.checkout.sessions.create(
+        {
+          mode: "payment",
+          line_items: [
+            {
+              price_data: {
+                currency: "jpy",
+                product_data: {
+                  name: "KAKULETTER 転送手数料",
+                  description: `受取人ID: ${recipient.display_id}`,
+                },
+                unit_amount: fee,
               },
-              unit_amount: fee,
+              quantity: 1,
             },
-            quantity: 1,
+          ],
+          ...(connectAccountId ? { payment_intent_data: { application_fee_amount: operatorCut } } : {}),
+          success_url: `${appUrl}/letters/${letter.id}?stripe_return=1`,
+          cancel_url: `${appUrl}/send?canceled=1`,
+          metadata: {
+            type: "letter",
+            letter_id: letter.id,
           },
-        ],
-        success_url: `${appUrl}/letters/${letter.id}?stripe_return=1`,
-        cancel_url: `${appUrl}/send?canceled=1`,
-        metadata: {
-          type: "letter",
-          letter_id: letter.id,
         },
-      });
+        // 連結アカウント上で決済を作成（direct charge）
+        connectAccountId ? { stripeAccount: connectAccountId } : undefined
+      );
 
       await adminClient
         .from("letters")
-        .update({ payment_url: session.url, stripe_session_id: session.id })
+        .update({
+          payment_url: session.url,
+          stripe_session_id: session.id,
+          stripe_connect_account_id: connectAccountId,
+        })
         .eq("id", letter.id);
 
       return {
@@ -172,27 +206,34 @@ export async function createLetterPayment(
   };
 }
 
+type RecipientRow = {
+  id: string;
+  display_id: string;
+  custom_id: string | null;
+  subscription_status: string;
+  stripe_connect_account_id: string | null;
+};
+
 async function lookupRecipient(
   adminClient: ReturnType<typeof createAdminClient>,
   rawId: string
-): Promise<{
-  recipient: { id: string; display_id: string; custom_id: string | null; subscription_status: string };
-  isCustomId: boolean;
-} | null> {
+): Promise<{ recipient: RecipientRow; isCustomId: boolean } | null> {
+  const columns = "id, display_id, custom_id, subscription_status, stripe_connect_account_id";
+
   const { data: byDisplayId } = await adminClient
     .from("users")
-    .select("id, display_id, custom_id, subscription_status")
+    .select(columns)
     .eq("display_id", rawId.toUpperCase())
-    .single<{ id: string; display_id: string; custom_id: string | null; subscription_status: string }>();
+    .single<RecipientRow>();
 
   if (byDisplayId) return { recipient: byDisplayId, isCustomId: false };
 
   const normalizedCustomId = `KKL-${rawId.replace(/^KKL-/i, "").toLowerCase()}`;
   const { data: byCustomId } = await adminClient
     .from("users")
-    .select("id, display_id, custom_id, subscription_status")
+    .select(columns)
     .eq("custom_id", normalizedCustomId)
-    .single<{ id: string; display_id: string; custom_id: string | null; subscription_status: string }>();
+    .single<RecipientRow>();
 
   if (byCustomId) return { recipient: byCustomId, isCustomId: true };
   return null;

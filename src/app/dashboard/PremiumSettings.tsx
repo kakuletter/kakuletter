@@ -1,14 +1,35 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 import { updateCustomId } from "./actions";
 
 type Props = {
   customId: string | null;
+  connectStatus: "none" | "pending" | "active";
 };
 
-export default function PremiumSettings({ customId }: Props) {
+export default function PremiumSettings({ customId, connectStatus }: Props) {
   const [idState, idAction, idPending] = useActionState(updateCustomId, {});
+  const [connecting, setConnecting] = useState(false);
+  const [connectError, setConnectError] = useState("");
+
+  async function handleConnect() {
+    setConnecting(true);
+    setConnectError("");
+    try {
+      const res = await fetch("/api/stripe/connect", { method: "POST" });
+      const json = await res.json();
+      if (json.url) {
+        window.location.href = json.url;
+      } else {
+        setConnectError(json.error ?? "口座連携の準備に失敗しました。");
+        setConnecting(false);
+      }
+    } catch {
+      setConnectError("通信に失敗しました。時間をおいて再度お試しください。");
+      setConnecting(false);
+    }
+  }
 
   return (
     <div className="space-y-6">
@@ -56,6 +77,44 @@ export default function PremiumSettings({ customId }: Props) {
           手数料のうち <strong>（手数料 − 310円）× 80%</strong> があなたへの収益として還元されます。
           残りは運営の取り分（310円 ＋ 超過分の20%）です。
         </p>
+      </div>
+
+      {/* 振込先（Stripe Connect）連携 */}
+      <div>
+        <p className="text-sm font-medium text-stone-700 mb-1">収益の受取口座</p>
+        {connectStatus === "active" ? (
+          <div className="bg-green-50 border border-green-200 rounded-xl px-4 py-3 space-y-2">
+            <p className="text-sm text-green-800 font-medium">✓ 口座連携が完了しています</p>
+            <p className="text-xs text-green-700">
+              カスタムID宛に手紙が届くと、あなたの取り分が自動で振り込まれます。
+            </p>
+            <button
+              type="button"
+              onClick={handleConnect}
+              disabled={connecting}
+              className="text-xs text-green-700 underline hover:text-green-900 disabled:opacity-60"
+            >
+              {connecting ? "準備中..." : "口座情報を更新する"}
+            </button>
+          </div>
+        ) : (
+          <div className="bg-stone-50 border border-stone-200 rounded-xl px-4 py-3 space-y-2">
+            <p className="text-xs text-stone-500">
+              {connectStatus === "pending"
+                ? "口座連携が途中です。続きを完了すると、収益が自動で振り込まれるようになります。"
+                : "口座を連携すると、カスタムID宛の収益が自動で振り込まれます。連携前は手動精算（運営への連絡）が必要です。"}
+            </p>
+            <button
+              type="button"
+              onClick={handleConnect}
+              disabled={connecting}
+              className="bg-[#635BFF] text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-[#4E47D0] disabled:opacity-60"
+            >
+              {connecting ? "準備中..." : connectStatus === "pending" ? "連携を続ける" : "口座を連携する"}
+            </button>
+          </div>
+        )}
+        {connectError && <p className="text-xs text-red-600 mt-1">{connectError}</p>}
       </div>
     </div>
   );

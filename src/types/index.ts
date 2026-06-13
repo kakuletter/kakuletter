@@ -15,6 +15,7 @@ export type UserProfile = {
   subscription_status: "free" | "premium";
   stripe_customer_id: string | null;
   stripe_subscription_id: string | null;
+  stripe_connect_account_id: string | null;
   custom_id: string | null;
 };
 
@@ -37,6 +38,7 @@ export type Letter = {
   // 決済
   payment_method: "paypay" | "stripe";
   stripe_session_id: string | null;
+  stripe_connect_account_id: string | null;
 };
 
 export type ActionState = {

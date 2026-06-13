@@ -15,9 +15,9 @@ export async function GET(request: Request) {
   const adminClient = createAdminClient();
   const { data: letter } = await adminClient
     .from("letters")
-    .select("status, stripe_session_id")
+    .select("status, stripe_session_id, stripe_connect_account_id")
     .eq("id", letterId)
-    .single<{ status: string; stripe_session_id: string | null }>();
+    .single<{ status: string; stripe_session_id: string | null; stripe_connect_account_id: string | null }>();
 
   if (!letter) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
@@ -28,10 +28,17 @@ export async function GET(request: Request) {
     return NextResponse.json({ status: letter.status });
   }
 
-  // payment_pending かつ stripe_session_id がある場合、Stripe APIで直接確認
+  // payment_pending かつ stripe_session_id がある場合、Stripe APIで直接確認。
+  // direct charge のセッションは連結アカウント上にあるため stripeAccount を指定する。
   if (letter.stripe_session_id) {
     try {
-      const session = await stripe.checkout.sessions.retrieve(letter.stripe_session_id);
+      const session = await stripe.checkout.sessions.retrieve(
+        letter.stripe_session_id,
+        undefined,
+        letter.stripe_connect_account_id
+          ? { stripeAccount: letter.stripe_connect_account_id }
+          : undefined
+      );
       if (session.payment_status === "paid") {
         await adminClient
           .from("letters")

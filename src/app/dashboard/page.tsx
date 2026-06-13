@@ -6,6 +6,7 @@ import Header from "@/components/Header";
 import CopyIdButton from "./CopyIdButton";
 import PremiumSettings from "./PremiumSettings";
 import { statusLabel, statusColor } from "@/lib/utils";
+import { isConnectAccountReady } from "@/lib/stripe";
 import type { UserProfile, Letter } from "@/types";
 
 export const metadata = {
@@ -15,7 +16,7 @@ export const metadata = {
 export default async function DashboardPage({
   searchParams,
 }: {
-  searchParams: Promise<{ subscription?: string }>;
+  searchParams: Promise<{ subscription?: string; connect?: string }>;
 }) {
   const params = await searchParams;
   const supabase = await createClient();
@@ -77,6 +78,12 @@ export default async function DashboardPage({
 
   const displayedId = isPremium && profile.custom_id ? profile.custom_id : profile.display_id;
 
+  // Stripe Connect（収益の振込先）連携状態
+  let connectStatus: "none" | "pending" | "active" = "none";
+  if (isPremium && profile.stripe_connect_account_id) {
+    connectStatus = (await isConnectAccountReady(profile.stripe_connect_account_id)) ? "active" : "pending";
+  }
+
   return (
     <div className="min-h-screen flex flex-col">
       <Header isLoggedIn={true} isAdmin={profile.is_admin} />
@@ -87,6 +94,15 @@ export default async function DashboardPage({
         {params.subscription === "success" && (
           <div className="bg-green-50 border border-green-200 rounded-xl p-4 text-sm text-green-800 text-center">
             🎉 プレミアムプランへの登録が完了しました！カスタムIDを設定してください。
+          </div>
+        )}
+
+        {/* Connect連携バナー */}
+        {params.connect === "return" && (
+          <div className="bg-green-50 border border-green-200 rounded-xl p-4 text-sm text-green-800 text-center">
+            {connectStatus === "active"
+              ? "✓ 口座連携が完了しました。今後の収益は自動で振り込まれます。"
+              : "口座連携を受け付けました。審査・確認が完了するまで少しお待ちください。"}
           </div>
         )}
 
@@ -136,7 +152,7 @@ export default async function DashboardPage({
               </div>
             </div>
             <p className="text-xs text-stone-400 mt-3">
-              ※ 精算は毎月末に運営から振り込みます。振込先は kakuletter@gmail.com までご連絡ください。
+              ※ カスタムID宛の収益は、決済時にStripe経由であなたの連携口座へ自動的に振り込まれます。
             </p>
           </section>
         )}
@@ -145,7 +161,7 @@ export default async function DashboardPage({
         {isPremium && (
           <section className="bg-white rounded-2xl border border-stone-200 p-6 md:p-8">
             <h2 className="font-semibold text-stone-900 mb-5">プレミアム設定</h2>
-            <PremiumSettings customId={profile.custom_id} />
+            <PremiumSettings customId={profile.custom_id} connectStatus={connectStatus} />
           </section>
         )}
 
