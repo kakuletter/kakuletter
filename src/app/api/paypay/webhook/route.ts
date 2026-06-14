@@ -28,11 +28,17 @@ export async function POST(request: Request) {
 
   if (status === "COMPLETED") {
     const adminClient = createAdminClient();
-    await adminClient
+    const { error } = await adminClient
       .from("letters")
       .update({ status: "received", received_at: new Date().toISOString() })
       .eq("id", merchantPaymentId)
       .eq("status", "payment_pending");
+
+    if (error) {
+      // DB 更新に失敗 → 500 を返して PayPay に再送させる（支払い済みなのに未決済表示を防ぐ）
+      console.error("[PayPay] letter update failed:", error.message);
+      return NextResponse.json({ error: "DB update failed" }, { status: 500 });
+    }
   }
 
   return NextResponse.json({ ok: true });

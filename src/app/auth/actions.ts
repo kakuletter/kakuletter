@@ -100,8 +100,16 @@ export async function registerUser(
 
   if (!profileCreated) {
     // プロフィール作成に失敗した場合、孤立した Auth ユーザーを削除して
-    // 同じメールアドレスで再登録できるようにする（原子性の担保）
-    await adminClient.auth.admin.deleteUser(authData.user.id).catch(() => {});
+    // 同じメールアドレスで再登録できるようにする（原子性の担保）。
+    // deleteUser は例外ではなく { error } を返すため、戻り値も確認する。
+    try {
+      const { error: delAuthError } = await adminClient.auth.admin.deleteUser(authData.user.id);
+      if (delAuthError) {
+        console.error("[register] auth rollback failed:", delAuthError.message);
+      }
+    } catch (e) {
+      console.error("[register] auth rollback threw:", e instanceof Error ? e.message : String(e));
+    }
     return { error: registerError };
   }
 
